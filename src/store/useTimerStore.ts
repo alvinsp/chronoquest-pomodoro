@@ -16,6 +16,7 @@ interface TimerState {
   status: TimerStatus;
   timeRemaining: number;        // in seconds
   totalDuration: number;        // in seconds
+  targetEndTime: number | null; // epoch ms when current running session ends
   currentRound: number;
   taskTitle: string;
   activeIdentityId: string;
@@ -44,6 +45,7 @@ export const useTimerStore = create<TimerState>()(
       status: 'idle',
       timeRemaining: 25 * 60,
       totalDuration: 25 * 60,
+      targetEndTime: null,
       currentRound: 1,
       taskTitle: 'Koding Arsitektur Sistem Baru',
       activeIdentityId: 'id-dev',
@@ -62,6 +64,8 @@ export const useTimerStore = create<TimerState>()(
           status: 'idle',
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
+          targetEndTime: null,
+          lastTickTimestamp: null,
         });
       },
 
@@ -94,6 +98,8 @@ export const useTimerStore = create<TimerState>()(
           status: 'idle',
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
+          targetEndTime: null,
+          lastTickTimestamp: null,
         });
       },
 
@@ -102,9 +108,12 @@ export const useTimerStore = create<TimerState>()(
 
       startTimer: () => {
         soundFx.playStart();
+        const now = Date.now();
+        const remaining = get().timeRemaining;
         set({
           status: 'running',
-          lastTickTimestamp: Date.now(),
+          targetEndTime: now + remaining * 1000,
+          lastTickTimestamp: now,
         });
       },
 
@@ -112,6 +121,7 @@ export const useTimerStore = create<TimerState>()(
         soundFx.playPause();
         set({
           status: 'paused',
+          targetEndTime: null,
           lastTickTimestamp: null,
         });
       },
@@ -128,6 +138,7 @@ export const useTimerStore = create<TimerState>()(
           status: 'idle',
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
+          targetEndTime: null,
           lastTickTimestamp: null,
         });
       },
@@ -148,6 +159,7 @@ export const useTimerStore = create<TimerState>()(
             status: 'idle',
             timeRemaining: durationMins * 60,
             totalDuration: durationMins * 60,
+            targetEndTime: null,
             lastTickTimestamp: null,
           });
         } else {
@@ -159,21 +171,24 @@ export const useTimerStore = create<TimerState>()(
             timeRemaining: preset.focusMinutes * 60,
             totalDuration: preset.focusMinutes * 60,
             currentRound: nextRound,
+            targetEndTime: null,
             lastTickTimestamp: null,
           });
         }
       },
 
       tick: () => {
-        const { status, timeRemaining, lastTickTimestamp } = get();
+        const { status, targetEndTime, timeRemaining } = get();
         if (status !== 'running') return;
 
         const now = Date.now();
-        const elapsedSeconds = lastTickTimestamp ? Math.floor((now - lastTickTimestamp) / 1000) : 1;
+        let nextRemaining: number;
 
-        if (elapsedSeconds < 1) return;
-
-        const nextRemaining = Math.max(0, timeRemaining - elapsedSeconds);
+        if (targetEndTime) {
+          nextRemaining = Math.max(0, Math.round((targetEndTime - now) / 1000));
+        } else {
+          nextRemaining = Math.max(0, timeRemaining - 1);
+        }
 
         if (nextRemaining <= 0) {
           get().finishCurrentSession();
@@ -181,6 +196,7 @@ export const useTimerStore = create<TimerState>()(
           set({
             timeRemaining: nextRemaining,
             lastTickTimestamp: now,
+            targetEndTime: targetEndTime || now + nextRemaining * 1000,
           });
         }
       },
@@ -239,13 +255,15 @@ export const useTimerStore = create<TimerState>()(
           const nextMode: TimerMode = isLong ? 'longBreak' : 'shortBreak';
           const breakMins = isLong ? preset.longBreakMinutes : preset.shortBreakMinutes;
           const autoStartBreaks = useSettingsStore.getState().autoStartBreaks;
+          const now = Date.now();
 
           set({
             mode: nextMode,
             status: autoStartBreaks ? 'running' : 'idle',
             timeRemaining: breakMins * 60,
             totalDuration: breakMins * 60,
-            lastTickTimestamp: autoStartBreaks ? Date.now() : null,
+            targetEndTime: autoStartBreaks ? now + breakMins * 60 * 1000 : null,
+            lastTickTimestamp: autoStartBreaks ? now : null,
           });
 
           if (autoStartBreaks) {
@@ -264,6 +282,7 @@ export const useTimerStore = create<TimerState>()(
 
           const nextRound = mode === 'longBreak' ? 1 : currentRound + 1;
           const autoStartPomodoros = useSettingsStore.getState().autoStartPomodoros;
+          const now = Date.now();
 
           set({
             mode: 'focus',
@@ -271,7 +290,8 @@ export const useTimerStore = create<TimerState>()(
             timeRemaining: preset.focusMinutes * 60,
             totalDuration: preset.focusMinutes * 60,
             currentRound: nextRound,
-            lastTickTimestamp: autoStartPomodoros ? Date.now() : null,
+            targetEndTime: autoStartPomodoros ? now + preset.focusMinutes * 60 * 1000 : null,
+            lastTickTimestamp: autoStartPomodoros ? now : null,
           });
 
           if (autoStartPomodoros) {
@@ -285,10 +305,29 @@ export const useTimerStore = create<TimerState>()(
       partialize: (state) => ({
         presets: state.presets,
         activePresetId: state.activePresetId,
+        mode: state.mode,
+        status: state.status,
+        timeRemaining: state.timeRemaining,
+        totalDuration: state.totalDuration,
+        targetEndTime: state.targetEndTime,
         currentRound: state.currentRound,
         taskTitle: state.taskTitle,
         activeIdentityId: state.activeIdentityId,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // If timer was running when page was closed/reloaded, recalculate elapsed time
+        if (state.status === 'running' && state.targetEndTime) {
+          const now = Date.now();
+          const remaining = Math.round((state.targetEndTime - now) / 1000);
+          if (remaining <= 0) {
+            state.finishCurrentSession();
+          } else {
+            state.timeRemaining = remaining;
+            state.lastTickTimestamp = now;
+          }
+        }
+      },
     }
   )
 );

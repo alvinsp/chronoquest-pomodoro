@@ -13,7 +13,11 @@ export interface UserHero {
   petId: string;
 }
 
-export type QuestType = 'sessions_today' | 'minutes_today' | 'streak_days' | 'identity_sessions';
+export type QuestType =
+  | "sessions_today"
+  | "minutes_today"
+  | "streak_days"
+  | "identity_sessions";
 
 export interface Quest {
   id: string;
@@ -34,7 +38,7 @@ export interface Badge {
   name: string;
   description: string;
   icon: string;
-  category: 'streak' | 'focus' | 'level' | 'mastery' | 'milestone';
+  category: "streak" | "focus" | "level" | "mastery" | "milestone";
   unlockedAt?: string;
   secret?: boolean;
 }
@@ -42,7 +46,7 @@ export interface Badge {
 export interface ShopItem {
   id: string;
   name: string;
-  category: 'avatar' | 'pet' | 'theme' | 'buff';
+  category: "avatar" | "pet" | "theme" | "buff";
   price: number;
   description: string;
   icon: string;
