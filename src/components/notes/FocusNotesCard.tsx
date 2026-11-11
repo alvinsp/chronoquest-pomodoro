@@ -124,3 +124,4 @@ export const FocusNotesCard: React.FC = () => {
     </div>
   );
 };
+

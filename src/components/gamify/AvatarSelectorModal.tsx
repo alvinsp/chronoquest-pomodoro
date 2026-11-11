@@ -165,3 +165,4 @@ export const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({ isOpen
     </PixelModal>
   );
 };
+

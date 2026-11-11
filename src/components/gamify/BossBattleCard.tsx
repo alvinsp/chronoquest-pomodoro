@@ -179,3 +179,4 @@ export const BossBattleCard: React.FC<{ isFocused?: boolean }> = ({ isFocused = 
     </div>
   );
 };
+

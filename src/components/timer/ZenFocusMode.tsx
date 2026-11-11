@@ -186,3 +186,4 @@ export const ZenFocusMode: React.FC<ZenFocusModeProps> = ({ isOpen, onClose }) =
     </div>
   );
 };
+
