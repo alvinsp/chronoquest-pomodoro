@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle } from 'lucide-react';
+import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
@@ -18,6 +18,8 @@ declare global {
           initialize: (config: {
             client_id: string;
             callback: (response: { credential: string }) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
           }) => void;
           renderButton: (
             parent: HTMLElement,
@@ -27,8 +29,10 @@ declare global {
               text?: string;
               shape?: string;
               width?: number;
+              logo_alignment?: string;
             }
           ) => void;
+          prompt: () => void;
         };
       };
     };
@@ -55,34 +59,58 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [clientIdInput, setClientIdInput] = useState(googleClientId);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
+  const [gisLoaded, setGisLoaded] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  // Initialize official Google Identity Services button if script is loaded & clientId available
+  // Initialize official Google Identity Services button with mobile readiness & retry
   useEffect(() => {
-    if (isOpen && googleClientId && window.google?.accounts?.id && googleBtnRef.current) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: (response) => {
-            const success = loginWithGoogleCredential(response.credential);
-            if (success) {
-              setSyncSuccessMsg('Berhasil login dengan Akun Google!');
-            }
-          },
-        });
+    if (!isOpen || !googleClientId) return;
 
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'filled_black',
-          size: 'large',
-          text: 'signin_with',
-          shape: 'rectangular',
-          width: 320,
-        });
-      } catch {
-        // ignore GIS initialization error
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        clearInterval(interval);
+        setGisLoaded(true);
+
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: (response) => {
+              const success = loginWithGoogleCredential(response.credential);
+              if (success) {
+                setSyncSuccessMsg('Berhasil login dengan Google!');
+              }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          googleBtnRef.current.innerHTML = '';
+          const btnWidth = Math.min(280, window.innerWidth - 60);
+
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'filled_black',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            width: btnWidth,
+            logo_alignment: 'left',
+          });
+
+          // Trigger One Tap if appropriate on mobile
+          window.google.accounts.id.prompt();
+        } catch {
+          // GIS rendering fallback
+        }
       }
-    }
+
+      if (attempts >= 25) {
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
   }, [isOpen, googleClientId, loginWithGoogleCredential]);
 
   const handleCustomLogin = (e: React.FormEvent) => {
@@ -220,23 +248,31 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <div className="p-3 bg-[#130f21] border-2 border-[#ffd700] flex items-start gap-2.5">
               <Sparkles size={18} className="text-[#ffd700] shrink-0 mt-0.5" />
               <p className="text-xs text-[#d3cbe7] leading-relaxed">
-                Hubungkan Akun Google milikmu agar seluruh progres level hero, lencana, target harian, dan catatan fokus tersimpan aman dan terisolasi khusus untuk akunmu!
+                Hubungkan Akun Google agar progres level hero, lencana, target harian, dan catatan fokus tersinkronisasi mulus di komputer maupun HP mobile milikmu!
               </p>
             </div>
 
-            {/* Official Google Button Render if Client ID configured */}
-            {googleClientId ? (
-              <div className="flex flex-col items-center justify-center py-2 space-y-2">
-                <div ref={googleBtnRef} />
-                <span className="text-[10px] text-[#786f94]">atau masukkan email Google di bawah</span>
+            {/* Official Google Sign-In Button (GIS) */}
+            <div className="p-4 bg-[#120f20] border-2 border-[#00f0ff] flex flex-col items-center justify-center space-y-3">
+              <div className="flex items-center gap-1.5 text-xs text-[#00f0ff] font-bold uppercase">
+                <Smartphone size={14} />
+                <span>Login Cepat Google (HP & Desktop)</span>
               </div>
-            ) : null}
+
+              <div ref={googleBtnRef} className="min-h-[44px] flex items-center justify-center w-full" />
+
+              {!gisLoaded && (
+                <div className="text-[10px] text-[#8e85aa] animate-pulse">
+                  Memuat tombol resmi Google...
+                </div>
+              )}
+            </div>
 
             {/* Fast Google Login by Email Form */}
             <form onSubmit={handleCustomLogin} className="p-4 bg-[#120f20] border-2 border-[#2b2545] space-y-3">
-              <h4 className="font-pixel text-xs text-[#00f0ff] uppercase flex items-center gap-1.5">
+              <h4 className="font-pixel text-xs text-[#ffd700] uppercase flex items-center gap-1.5">
                 <LogIn size={13} />
-                Masuk dengan Akun Google
+                Atau Masuk dengan Email Google
               </h4>
 
               <div>
@@ -272,20 +308,21 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               </PixelButton>
             </form>
 
-            {/* Google OAuth Client ID Configuration (Optional) */}
+            {/* Google OAuth Client ID Configuration Info */}
             <div className="p-3 bg-[#0d0c15] border border-[#261f3a] space-y-2 text-[11px]">
               <div className="flex items-center gap-1 text-[#ffd700] font-bold">
                 <AlertCircle size={13} />
-                <span>Pengaturan Google Client ID (Opsional untuk GIS Button):</span>
+                <span>Google Client ID Aktif:</span>
               </div>
               <input
                 type="text"
                 value={clientIdInput}
                 onChange={(e) => setClientIdInput(e.target.value)}
                 placeholder="xxxx.apps.googleusercontent.com"
-                className="w-full bg-[#151224] border border-[#3b335c] p-1.5 text-[10px] text-[#00f0ff] outline-none"
+                className="w-full bg-[#151224] border border-[#3b335c] p-1.5 text-[10px] text-[#00f0ff] outline-none font-mono"
               />
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center text-[10px] text-[#71688d]">
+                <span>Siap digunakan di mobile & desktop</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -294,7 +331,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                   }}
                   className="px-2 py-0.5 bg-[#211c38] text-[#ffd700] border border-[#3b335c] hover:border-[#ffd700] cursor-pointer text-[10px]"
                 >
-                  Simpan Client ID
+                  Update Client ID
                 </button>
               </div>
             </div>
@@ -304,4 +341,3 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     </PixelModal>
   );
 };
-

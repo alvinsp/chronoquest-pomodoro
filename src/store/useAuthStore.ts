@@ -4,6 +4,8 @@ import type { GoogleUser, UserAccountBackup } from '../types/auth';
 import { soundFx } from '../audio/synthAudio';
 import confetti from 'canvas-confetti';
 
+export const DEFAULT_GOOGLE_CLIENT_ID = '1069804020855-a4i8m7o86ofrkrdkog916br72pbufost.apps.googleusercontent.com';
+
 interface AuthState {
   user: GoogleUser | null;
   googleClientId: string;
@@ -42,7 +44,9 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      googleClientId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_CLIENT_ID) || '',
+      googleClientId:
+        (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_CLIENT_ID) ||
+        DEFAULT_GOOGLE_CLIENT_ID,
       lastSyncedAt: null,
       isAutoSyncEnabled: true,
 
@@ -179,4 +183,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
-
