@@ -12,6 +12,9 @@ interface StatsState {
   recordSession: (
     session: Omit<SessionRecord, "id" | "timestamp" | "dateStr">,
   ) => SessionRecord;
+  updateSessionTitle: (id: string, newTitle: string) => void;
+  deleteSession: (id: string) => void;
+  renameUntitledSessions: (fallbackPrefix?: string) => void;
   getTodayMinutes: () => number;
   getTodaySessionsCount: () => number;
   getTotalMinutes: () => number;
@@ -73,6 +76,41 @@ export const useStatsStore = create<StatsState>()(
         return newRecord;
       },
 
+      updateSessionTitle: (id: string, newTitle: string) => {
+        const cleanTitle = newTitle.trim();
+        if (!cleanTitle) return;
+
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === id ? { ...s, taskTitle: cleanTitle } : s
+          ),
+        }));
+      },
+
+      deleteSession: (id: string) => {
+        set((state) => ({
+          sessions: state.sessions.filter((s) => s.id !== id),
+        }));
+      },
+
+      renameUntitledSessions: (fallbackPrefix = "Sesi Deep Focus") => {
+        set((state) => ({
+          sessions: state.sessions.map((s, idx) => {
+            if (
+              !s.taskTitle ||
+              s.taskTitle.toLowerCase().includes("tanpa judul") ||
+              s.taskTitle.trim() === ""
+            ) {
+              return {
+                ...s,
+                taskTitle: `${fallbackPrefix} #${state.sessions.length - idx} (${s.durationMinutes}m)`,
+              };
+            }
+            return s;
+          }),
+        }));
+      },
+
       getTodayMinutes: () => {
         const todayStr = getTodayDateString();
         return get()
@@ -95,8 +133,7 @@ export const useStatsStore = create<StatsState>()(
 
       getHeatmapData: (daysCount = 60) => {
         const sessions = get().sessions.filter((s) => s.mode === "focus");
-        const dayMap: Record<string, { minutes: number; sessions: number }> =
-          {};
+        const dayMap: Record<string, { minutes: number; sessions: number }> = {};
 
         // Prepare past N days
         const result: DayFocusStat[] = [];

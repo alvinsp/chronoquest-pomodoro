@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { History, Download, Upload, Zap, Coins, Clock } from 'lucide-react';
+import { History, Download, Upload, Zap, Coins, Clock, Edit2, Check, X, Trash2, Wand2 } from 'lucide-react';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useGoalStore } from '../../store/useGoalStore';
 import { formatDatePretty, formatMinutes } from '../../utils/formatters';
 import { PixelButton } from '../ui/PixelButton';
 
 export const SessionHistory: React.FC = () => {
-  const { sessions, exportDataJson, importDataJson } = useStatsStore();
+  const { sessions, updateSessionTitle, deleteSession, renameUntitledSessions, exportDataJson, importDataJson } = useStatsStore();
   const { identities } = useGoalStore();
   const [filterIdentity, setFilterIdentity] = useState<string>('all');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>('');
 
   const filteredSessions = sessions.filter((s) => {
     if (filterIdentity === 'all') return true;
@@ -16,6 +18,30 @@ export const SessionHistory: React.FC = () => {
   });
 
   const getIdentity = (id: string) => identities.find((i) => i.id === id);
+
+  const untitledSessionsCount = sessions.filter(
+    (s) => !s.taskTitle || s.taskTitle.toLowerCase().includes('tanpa judul') || s.taskTitle.trim() === ''
+  ).length;
+
+  const handleStartEdit = (id: string, currentTitle: string) => {
+    setEditingId(id);
+    setEditingTitle(currentTitle);
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if (editingTitle.trim()) {
+      updateSessionTitle(id, editingTitle.trim());
+    }
+    setEditingId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const handleAutoFixUntitled = () => {
+    renameUntitledSessions('Sesi Deep Work');
+  };
 
   const handleExport = () => {
     const jsonStr = exportDataJson();
@@ -56,7 +82,7 @@ export const SessionHistory: React.FC = () => {
             Log Riwayat Sesi (Adventure Chronicle)
           </h3>
           <p className="text-xs text-[#9f97ba] mt-0.5">
-            Catatan setiap ekspedisi fokusmu beserta reward EXP dan Gold.
+            Catatan setiap ekspedisi fokusmu. Klik ikon pensil ✏️ untuk mengubah judul sesi.
           </p>
         </div>
 
@@ -76,6 +102,22 @@ export const SessionHistory: React.FC = () => {
           </label>
         </div>
       </div>
+
+      {/* Auto fix banner if there are untitled sessions */}
+      {untitledSessionsCount > 0 && (
+        <div className="mb-3 p-3 bg-[#241a05] border-2 border-[#ffd700] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+          <span className="text-[#ffd700] font-silkscreen">
+            ⚠️ Terdapat {untitledSessionsCount} sesi berlabel "Fokus Tanpa Judul".
+          </span>
+          <button
+            onClick={handleAutoFixUntitled}
+            className="px-2.5 py-1 bg-[#ffd700] text-black font-silkscreen text-[11px] font-bold border border-black hover:bg-[#ffe033] cursor-pointer flex items-center gap-1 shadow-[1px_1px_0px_#000]"
+          >
+            <Wand2 size={12} />
+            <span>Beri Judul Otomatis Semua</span>
+          </button>
+        </div>
+      )}
 
       {/* Filter by identity */}
       <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 text-xs font-silkscreen">
@@ -107,7 +149,7 @@ export const SessionHistory: React.FC = () => {
       </div>
 
       {/* Sessions list */}
-      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
         {filteredSessions.length === 0 ? (
           <div className="p-6 text-center text-xs font-silkscreen text-[#786f94]">
             Belum ada riwayat sesi yang tercatat.
@@ -115,12 +157,22 @@ export const SessionHistory: React.FC = () => {
         ) : (
           filteredSessions.map((session) => {
             const identity = getIdentity(session.identityId);
+            const isEditing = editingId === session.id;
+            const isUntitled =
+              !session.taskTitle ||
+              session.taskTitle.toLowerCase().includes('tanpa judul') ||
+              session.taskTitle.trim() === '';
+
             return (
               <div
                 key={session.id}
-                className="p-3 bg-[#130f21] border-2 border-[#2b2447] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                className={`p-3 border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs transition-all ${
+                  isUntitled
+                    ? 'bg-[#1b1524] border-[#ffd700]/70'
+                    : 'bg-[#130f21] border-[#2b2447]'
+                }`}
               >
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     {identity && (
                       <span
@@ -136,14 +188,72 @@ export const SessionHistory: React.FC = () => {
                     <span className="text-[10px] text-[#7d759b] font-silkscreen">
                       {formatDatePretty(session.dateStr)}
                     </span>
+                    {isUntitled && (
+                      <span className="text-[9px] font-pixel px-1.5 py-0.2 bg-[#332205] text-[#ffd700] border border-[#ffd700]">
+                        BELUM DIBERI JUDUL
+                      </span>
+                    )}
                   </div>
-                  <div className="font-silkscreen text-[#f0edf6] font-bold text-xs sm:text-sm">
-                    {session.taskTitle}
-                  </div>
+
+                  {/* Title or Editable Input */}
+                  {isEditing ? (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        placeholder="Masukkan judul sesi..."
+                        className="bg-[#09080e] border border-[#00f0ff] px-2 py-1 text-xs text-[#00f0ff] font-bold outline-none flex-1 font-silkscreen"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSaveEdit(session.id)}
+                        className="p-1 bg-[#00ff66] text-black border border-black hover:bg-[#25f07a] cursor-pointer"
+                        title="Simpan Judul"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="p-1 bg-[#211c38] text-white border border-black hover:bg-[#ff3b30] cursor-pointer"
+                        title="Batal"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 group">
+                      <span
+                        className={`font-silkscreen font-bold text-xs sm:text-sm truncate ${
+                          isUntitled ? 'text-[#ffd700] italic' : 'text-[#f0edf6]'
+                        }`}
+                      >
+                        {session.taskTitle || 'Fokus Tanpa Judul'}
+                      </span>
+                      <button
+                        onClick={() => handleStartEdit(session.id, session.taskTitle)}
+                        className="p-1 text-[#786f94] hover:text-[#00f0ff] transition-colors cursor-pointer"
+                        title="Ubah judul sesi ini"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Hapus sesi ini dari riwayat?')) {
+                            deleteSession(session.id);
+                          }
+                        }}
+                        className="p-1 text-[#5b5375] hover:text-[#ff3b30] transition-colors cursor-pointer"
+                        title="Hapus sesi ini"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Duration & Rewards */}
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-[#2b2447]">
                   <div className="flex items-center gap-1 text-[#00f0ff] font-pixel text-xs">
                     <Clock size={12} />
                     <span>{formatMinutes(session.durationMinutes)}</span>
@@ -167,4 +277,3 @@ export const SessionHistory: React.FC = () => {
     </div>
   );
 };
-

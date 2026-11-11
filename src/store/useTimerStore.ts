@@ -213,13 +213,29 @@ export const useTimerStore = create<TimerState>()(
 
           const { xp, gold } = calculateXpGain(durationMinutes, preset.xpMultiplier);
 
+          const identity = useGoalStore.getState().identities.find((i) => i.id === activeIdentityId);
+          const activeGoal = useGoalStore.getState().goals.find(
+            (g) => g.period === 'daily' && g.identityId === activeIdentityId && !g.completed
+          );
+
+          let resolvedTitle = taskTitle?.trim();
+          if (!resolvedTitle || resolvedTitle.toLowerCase().includes('tanpa judul')) {
+            if (activeGoal) {
+              resolvedTitle = activeGoal.title;
+            } else if (identity) {
+              resolvedTitle = `Sesi Fokus ${identity.name}`;
+            } else {
+              resolvedTitle = `Sesi Fokus ${preset.name}`;
+            }
+          }
+
           // 1. Record in stats
           useStatsStore.getState().recordSession({
             durationMinutes,
             mode: 'focus',
             presetId: activePresetId,
             identityId: activeIdentityId,
-            taskTitle: taskTitle || 'Fokus Tanpa Judul',
+            taskTitle: resolvedTitle,
             xpEarned: xp,
             goldEarned: gold,
             completed: true,
