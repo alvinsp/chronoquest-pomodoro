@@ -14,3 +14,4 @@ export interface PomodoroPreset {
 }
 
 export type TimerStatus = 'idle' | 'running' | 'paused';
+

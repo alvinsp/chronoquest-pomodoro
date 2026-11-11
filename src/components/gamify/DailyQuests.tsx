@@ -93,3 +93,4 @@ export const DailyQuestsModal: React.FC<DailyQuestsModalProps> = ({ isOpen, onCl
     </PixelModal>
   );
 };
+

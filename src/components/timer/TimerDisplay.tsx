@@ -145,3 +145,4 @@ export const TimerDisplay: React.FC = () => {
     </div>
   );
 };
+

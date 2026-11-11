@@ -26,3 +26,4 @@ export interface Goal {
   notes?: string;
   createdAt: string;
 }
+

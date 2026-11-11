@@ -123,3 +123,4 @@ export const PixelShopModal: React.FC<PixelShopModalProps> = ({ isOpen, onClose 
     </PixelModal>
   );
 };
+

@@ -167,3 +167,4 @@ export const SessionHistory: React.FC = () => {
     </div>
   );
 };
+

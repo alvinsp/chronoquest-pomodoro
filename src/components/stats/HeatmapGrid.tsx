@@ -93,3 +93,4 @@ export const HeatmapGrid: React.FC = () => {
     </div>
   );
 };
+

@@ -56,3 +56,4 @@ export const PixelProgress: React.FC<PixelProgressProps> = ({
     </div>
   );
 };
+

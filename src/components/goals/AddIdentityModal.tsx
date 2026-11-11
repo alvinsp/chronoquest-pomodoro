@@ -117,3 +117,4 @@ export const AddIdentityModal: React.FC<AddIdentityModalProps> = ({ isOpen, onCl
     </PixelModal>
   );
 };
+

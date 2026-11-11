@@ -90,3 +90,4 @@ export const PixelPet: React.FC<PixelPetProps> = ({ petId, isFocused = false }) 
     </div>
   );
 };
+

@@ -66,3 +66,4 @@ export const PixelModal: React.FC<PixelModalProps> = ({
     </div>
   );
 };
+

@@ -43,3 +43,4 @@ export const PixelCard: React.FC<PixelCardProps> = ({
     </div>
   );
 };
+

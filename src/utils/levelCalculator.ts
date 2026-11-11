@@ -20,3 +20,4 @@ export function calculateXpGain(durationMinutes: number, multiplier: number = 1.
   const gold = Math.max(1, Math.round(durationMinutes * 0.8 * multiplier));
   return { xp, gold };
 }
+

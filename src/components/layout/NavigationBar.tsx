@@ -60,3 +60,4 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     </nav>
   );
 };
+

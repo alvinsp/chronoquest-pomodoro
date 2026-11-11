@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import confetti from 'canvas-confetti';
 import type { UserHero, Quest, Badge, ShopItem } from '../types/gamify';
+import type { Boss } from '../types/boss';
 import { DEFAULT_BADGES, DEFAULT_SHOP_ITEMS, DEFAULT_QUESTS } from '../utils/defaults';
+import { DEFAULT_BOSSES } from '../utils/bosses';
 import { calculateTargetXp, getTitleForLevel } from '../utils/levelCalculator';
 import { soundFx } from '../audio/synthAudio';
 
@@ -11,7 +13,10 @@ interface GamifyState {
   quests: Quest[];
   badges: Badge[];
   shopItems: ShopItem[];
+  bosses: Boss[];
+  activeBossIndex: number;
   recentLevelUp: boolean;
+  recentBossDefeat: { bossName: string; gold: number; xp: number } | null;
 
   addXpAndGold: (xpEarned: number, goldEarned: number) => { leveledUp: boolean; newLevel: number };
   claimQuest: (questId: string) => void;
@@ -19,7 +24,9 @@ interface GamifyState {
   unlockBadge: (badgeId: string) => void;
   buyShopItem: (itemId: string) => boolean;
   equipShopItem: (itemId: string) => void;
+  damageActiveBoss: (damage: number) => { bossDefeated: boolean; bossName: string; lootGold: number; lootXp: number };
   clearLevelUpAlert: () => void;
+  clearBossAlert: () => void;
   restoreDailyVitals: () => void;
 }
 
@@ -43,7 +50,10 @@ export const useGamifyStore = create<GamifyState>()(
       quests: DEFAULT_QUESTS,
       badges: DEFAULT_BADGES,
       shopItems: DEFAULT_SHOP_ITEMS,
+      bosses: DEFAULT_BOSSES,
+      activeBossIndex: 0,
       recentLevelUp: false,
+      recentBossDefeat: null,
 
       addXpAndGold: (xpEarned, goldEarned) => {
         let { level, currentXp, targetXp, gold, hp, mana, maxHp, maxMana, name } = get().hero;
@@ -101,6 +111,63 @@ export const useGamifyStore = create<GamifyState>()(
         }
 
         return { leveledUp, newLevel: level };
+      },
+
+      damageActiveBoss: (damage) => {
+        const { bosses, activeBossIndex } = get();
+        const currentBoss = bosses[activeBossIndex];
+        if (!currentBoss || currentBoss.defeated) {
+          return { bossDefeated: false, bossName: '', lootGold: 0, lootXp: 0 };
+        }
+
+        const nextHp = Math.max(0, currentBoss.currentHp - damage);
+        const defeated = nextHp === 0;
+
+        let lootGold = 0;
+        let lootXp = 0;
+        let nextIndex = activeBossIndex;
+
+        if (defeated) {
+          lootGold = currentBoss.rewardGold;
+          lootXp = currentBoss.rewardXp;
+          soundFx.playLevelUp();
+          confetti({
+            particleCount: 100,
+            spread: 90,
+            origin: { y: 0.5 },
+            colors: ['#ffd700', '#ff0055', '#00f0ff'],
+          });
+
+          // Next boss index (or cycle back)
+          if (activeBossIndex < bosses.length - 1) {
+            nextIndex = activeBossIndex + 1;
+          }
+
+          get().addXpAndGold(lootXp, lootGold);
+          set({
+            recentBossDefeat: {
+              bossName: currentBoss.name,
+              gold: lootGold,
+              xp: lootXp,
+            },
+          });
+        }
+
+        set((state) => ({
+          bosses: state.bosses.map((b, idx) =>
+            idx === activeBossIndex
+              ? { ...b, currentHp: nextHp, defeated }
+              : b
+          ),
+          activeBossIndex: nextIndex,
+        }));
+
+        return {
+          bossDefeated: defeated,
+          bossName: currentBoss.name,
+          lootGold,
+          lootXp,
+        };
       },
 
       claimQuest: (questId) => {
@@ -213,6 +280,7 @@ export const useGamifyStore = create<GamifyState>()(
       },
 
       clearLevelUpAlert: () => set({ recentLevelUp: false }),
+      clearBossAlert: () => set({ recentBossDefeat: null }),
 
       restoreDailyVitals: () => {
         set((state) => ({
