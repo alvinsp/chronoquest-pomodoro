@@ -10,7 +10,7 @@ interface TimerControlsProps {
 }
 
 export const TimerControls: React.FC<TimerControlsProps> = ({ onOpenZenMode }) => {
-  const { status, startTimer, pauseTimer, resetTimer, skipSession } = useTimerStore();
+  const { status, mode, startTimer, pauseTimer, resetTimer, skipSession } = useTimerStore();
   const { isMuted, toggleMute, ambientType, setAmbientType } = useSettingsStore();
 
   const handleAmbientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -48,7 +48,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({ onOpenZenMode }) =
             className="flex-1 min-w-[160px] py-3 text-base shadow-[4px_4px_0px_#000]"
           >
             <Play size={20} className="mr-1 fill-white" />
-            <span>MULAI FOKUS</span>
+            <span>{mode === 'focus' ? 'MULAI FOKUS' : 'MULAI ISTIRAHAT'}</span>
           </PixelButton>
         )}
 

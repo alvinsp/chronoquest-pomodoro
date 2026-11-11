@@ -9,6 +9,7 @@ import { AvatarSelectorModal } from './components/gamify/AvatarSelectorModal';
 import { BossBattleCard } from './components/gamify/BossBattleCard';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { GoogleAuthModal } from './components/auth/GoogleAuthModal';
+import { SessionCompletedModal } from './components/timer/SessionCompletedModal';
 
 import { PresetSelector } from './components/timer/PresetSelector';
 import { TimerDisplay } from './components/timer/TimerDisplay';
@@ -337,6 +338,7 @@ export function App() {
       <AvatarSelectorModal isOpen={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <GoogleAuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <SessionCompletedModal />
       <ZenFocusMode isOpen={isZenOpen} onClose={() => setIsZenOpen(false)} />
       <AddGoalModal
         isOpen={isAddDailyGoalOpen}

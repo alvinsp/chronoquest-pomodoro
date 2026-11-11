@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
-import { History, Download, Upload, Zap, Coins, Clock, Edit2, Check, X, Trash2, Wand2, Target } from 'lucide-react';
+import { History, Download, Upload, Zap, Coins, Clock, Edit2, Check, X, Trash2, Wand2, Target, Sparkles } from 'lucide-react';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useGoalStore } from '../../store/useGoalStore';
 import { formatDatePretty, formatMinutes } from '../../utils/formatters';
 import { PixelButton } from '../ui/PixelButton';
 
 export const SessionHistory: React.FC = () => {
-  const { sessions, updateSessionTitle, deleteSession, renameUntitledSessions, exportDataJson, importDataJson } = useStatsStore();
+  const {
+    sessions,
+    updateSessionTitle,
+    deleteSession,
+    renameUntitledSessions,
+    cleanupDuplicateSessions,
+    exportDataJson,
+    importDataJson,
+  } = useStatsStore();
   const { identities, goals } = useGoalStore();
   const [filterIdentity, setFilterIdentity] = useState<string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
+  const [cleanFeedback, setCleanFeedback] = useState<string>('');
 
   const filteredSessions = sessions.filter((s) => {
     if (filterIdentity === 'all') return true;
@@ -41,6 +50,16 @@ export const SessionHistory: React.FC = () => {
 
   const handleAutoFixUntitled = () => {
     renameUntitledSessions('Sesi Deep Work');
+  };
+
+  const handleCleanDuplicates = () => {
+    const removed = cleanupDuplicateSessions();
+    if (removed > 0) {
+      setCleanFeedback(`✓ Berhasil merapikan & menghapus ${removed} sesi duplikat.`);
+    } else {
+      setCleanFeedback('✓ Data statistik sudah bersih, tidak ada duplikat.');
+    }
+    setTimeout(() => setCleanFeedback(''), 4000);
   };
 
   const handleExport = () => {
@@ -86,8 +105,18 @@ export const SessionHistory: React.FC = () => {
           </p>
         </div>
 
-        {/* Export / Import Data */}
-        <div className="flex items-center gap-2">
+        {/* Export / Import Data & Cleanup */}
+        <div className="flex flex-wrap items-center gap-2">
+          <PixelButton
+            variant="retro-dark"
+            size="sm"
+            onClick={handleCleanDuplicates}
+            title="Bersihkan riwayat sesi ganda yang terulang otomatis"
+          >
+            <Sparkles size={13} className="text-[#ffd700]" />
+            <span>Rapikan Duplikat</span>
+          </PixelButton>
+
           <PixelButton variant="retro-dark" size="sm" onClick={handleExport} title="Download data cadangan JSON">
             <Download size={13} />
             <span>Ekspor</span>
@@ -102,6 +131,14 @@ export const SessionHistory: React.FC = () => {
           </label>
         </div>
       </div>
+
+      {/* Duplicate cleanup feedback */}
+      {cleanFeedback && (
+        <div className="mb-3 p-2.5 bg-[#052e16] border-2 border-[#00ff66] text-[#00ff66] font-silkscreen text-xs flex items-center gap-2">
+          <Sparkles size={14} />
+          <span>{cleanFeedback}</span>
+        </div>
+      )}
 
       {/* Auto fix banner if there are untitled sessions */}
       {untitledSessionsCount > 0 && (

@@ -22,6 +22,7 @@ interface StatsState {
   getIdentityStats: (identityIds: string[]) => IdentityStat[];
   exportDataJson: () => string;
   importDataJson: (jsonStr: string) => boolean;
+  cleanupDuplicateSessions: () => number;
 }
 
 export const useStatsStore = create<StatsState>()(
@@ -35,11 +36,35 @@ export const useStatsStore = create<StatsState>()(
         .split("T")[0],
 
       recordSession: (sessionData) => {
-        const todayStr = getTodayDateString();
+        if (!sessionData.durationMinutes || sessionData.durationMinutes <= 0) {
+          return {
+            ...sessionData,
+            id: 'sess-skipped',
+            timestamp: Date.now(),
+            dateStr: getTodayDateString(),
+          };
+        }
+
         const now = Date.now();
+        const existingSessions = get().sessions;
+        const lastSession = existingSessions[0];
+
+        // DEDUPLICATION SHIELD:
+        // Prevent registering a duplicate session if recorded within 30 seconds with identical attributes
+        if (
+          lastSession &&
+          now - lastSession.timestamp < 30000 &&
+          lastSession.mode === sessionData.mode &&
+          lastSession.durationMinutes === sessionData.durationMinutes &&
+          lastSession.taskTitle === sessionData.taskTitle
+        ) {
+          return lastSession;
+        }
+
+        const todayStr = getTodayDateString();
         const newRecord: SessionRecord = {
           ...sessionData,
-          id: "sess-" + now,
+          id: "sess-" + now + "-" + Math.random().toString(36).slice(2, 6),
           timestamp: now,
           dateStr: todayStr,
         };
@@ -74,6 +99,31 @@ export const useStatsStore = create<StatsState>()(
         }));
 
         return newRecord;
+      },
+
+      cleanupDuplicateSessions: () => {
+        let removedCount = 0;
+        set((state) => {
+          const cleaned: SessionRecord[] = [];
+          for (let i = 0; i < state.sessions.length; i++) {
+            const current = state.sessions[i];
+            const prev = cleaned[cleaned.length - 1];
+            // If current was created within 60 seconds of previous and has identical title, duration, and mode:
+            if (
+              prev &&
+              Math.abs(current.timestamp - prev.timestamp) < 60000 &&
+              current.mode === prev.mode &&
+              current.durationMinutes === prev.durationMinutes &&
+              current.taskTitle === prev.taskTitle
+            ) {
+              removedCount++;
+              continue; // skip duplicate
+            }
+            cleaned.push(current);
+          }
+          return { sessions: cleaned };
+        });
+        return removedCount;
       },
 
       updateSessionTitle: (id: string, newTitle: string) => {
@@ -225,6 +275,10 @@ export const useStatsStore = create<StatsState>()(
     }),
     {
       name: "pixel-pomodoro-stats",
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        state.cleanupDuplicateSessions();
+      },
     },
   ),
 );
