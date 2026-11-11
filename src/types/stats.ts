@@ -8,6 +8,8 @@ export interface SessionRecord {
   mode: TimerMode;
   presetId: PresetId;
   identityId: string;
+  goalId?: string;        // ID Goal yang aktif saat sesi
+  goalTitle?: string;     // Judul Goal aktif
   taskTitle: string;
   xpEarned: number;
   goldEarned: number;

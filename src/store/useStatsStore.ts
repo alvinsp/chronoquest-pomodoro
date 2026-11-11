@@ -101,9 +101,10 @@ export const useStatsStore = create<StatsState>()(
               s.taskTitle.toLowerCase().includes("tanpa judul") ||
               s.taskTitle.trim() === ""
             ) {
+              const newTitle = s.goalTitle || `${fallbackPrefix} #${state.sessions.length - idx} (${s.durationMinutes}m)`;
               return {
                 ...s,
-                taskTitle: `${fallbackPrefix} #${state.sessions.length - idx} (${s.durationMinutes}m)`,
+                taskTitle: newTitle,
               };
             }
             return s;

@@ -213,10 +213,13 @@ export const useTimerStore = create<TimerState>()(
 
           const { xp, gold } = calculateXpGain(durationMinutes, preset.xpMultiplier);
 
-          const identity = useGoalStore.getState().identities.find((i) => i.id === activeIdentityId);
-          const activeGoal = useGoalStore.getState().goals.find(
-            (g) => g.period === 'daily' && g.identityId === activeIdentityId && !g.completed
-          );
+          const { activeGoalId, goals, identities } = useGoalStore.getState();
+          const identity = identities.find((i) => i.id === activeIdentityId);
+          
+          // Resolve the active goal
+          const activeGoal = (activeGoalId ? goals.find((g) => g.id === activeGoalId) : null)
+            || goals.find((g) => g.period === 'daily' && g.identityId === activeIdentityId && !g.completed)
+            || goals.find((g) => g.identityId === activeIdentityId && !g.completed);
 
           let resolvedTitle = taskTitle?.trim();
           if (!resolvedTitle || resolvedTitle.toLowerCase().includes('tanpa judul')) {
@@ -229,20 +232,22 @@ export const useTimerStore = create<TimerState>()(
             }
           }
 
-          // 1. Record in stats
+          // 1. Record in stats with direct active goal connection
           useStatsStore.getState().recordSession({
             durationMinutes,
             mode: 'focus',
             presetId: activePresetId,
             identityId: activeIdentityId,
+            goalId: activeGoal?.id,
+            goalTitle: activeGoal?.title,
             taskTitle: resolvedTitle,
             xpEarned: xp,
             goldEarned: gold,
             completed: true,
           });
 
-          // 2. Record in goals
-          useGoalStore.getState().recordSessionProgress(activeIdentityId, durationMinutes);
+          // 2. Record in goals with specific active goal progression
+          useGoalStore.getState().recordSessionProgress(activeIdentityId, durationMinutes, activeGoal?.id);
 
           // 3. Add XP & Gold to Gamify hero and attack current Boss
           useGamifyStore.getState().addXpAndGold(xp, gold);

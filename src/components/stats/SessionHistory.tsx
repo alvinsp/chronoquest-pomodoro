@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, Download, Upload, Zap, Coins, Clock, Edit2, Check, X, Trash2, Wand2 } from 'lucide-react';
+import { History, Download, Upload, Zap, Coins, Clock, Edit2, Check, X, Trash2, Wand2, Target } from 'lucide-react';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useGoalStore } from '../../store/useGoalStore';
 import { formatDatePretty, formatMinutes } from '../../utils/formatters';
@@ -7,7 +7,7 @@ import { PixelButton } from '../ui/PixelButton';
 
 export const SessionHistory: React.FC = () => {
   const { sessions, updateSessionTitle, deleteSession, renameUntitledSessions, exportDataJson, importDataJson } = useStatsStore();
-  const { identities } = useGoalStore();
+  const { identities, goals } = useGoalStore();
   const [filterIdentity, setFilterIdentity] = useState<string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>('');
@@ -173,18 +173,28 @@ export const SessionHistory: React.FC = () => {
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                     {identity && (
                       <span
-                        className="text-[10px] font-pixel px-1.5 py-0.5 border border-black"
+                        className="text-[10px] font-pixel px-1.5 py-0.5 border border-black flex items-center gap-1"
                         style={{
                           backgroundColor: `${identity.color}20`,
                           color: identity.color,
                         }}
                       >
+                        <span className="w-1.5 h-1.5 inline-block" style={{ backgroundColor: identity.color }} />
                         {identity.name}
                       </span>
                     )}
+
+                    {/* Goal Connection Badge */}
+                    {session.goalTitle && (
+                      <span className="text-[10px] font-silkscreen px-1.5 py-0.5 bg-[#0e2229] border border-[#00f0ff] text-[#00f0ff] flex items-center gap-1">
+                        <Target size={10} className="text-[#00f0ff]" />
+                        <span>Target: {session.goalTitle}</span>
+                      </span>
+                    )}
+
                     <span className="text-[10px] text-[#7d759b] font-silkscreen">
                       {formatDatePretty(session.dateStr)}
                     </span>
@@ -197,29 +207,49 @@ export const SessionHistory: React.FC = () => {
 
                   {/* Title or Editable Input */}
                   {isEditing ? (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <input
-                        type="text"
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        placeholder="Masukkan judul sesi..."
-                        className="bg-[#09080e] border border-[#00f0ff] px-2 py-1 text-xs text-[#00f0ff] font-bold outline-none flex-1 font-silkscreen"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => handleSaveEdit(session.id)}
-                        className="p-1 bg-[#00ff66] text-black border border-black hover:bg-[#25f07a] cursor-pointer"
-                        title="Simpan Judul"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="p-1 bg-[#211c38] text-white border border-black hover:bg-[#ff3b30] cursor-pointer"
-                        title="Batal"
-                      >
-                        <X size={14} />
-                      </button>
+                    <div className="space-y-1.5 mt-1">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          placeholder="Masukkan judul sesi..."
+                          className="bg-[#09080e] border border-[#00f0ff] px-2 py-1 text-xs text-[#00f0ff] font-bold outline-none flex-1 font-silkscreen"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveEdit(session.id)}
+                          className="p-1 bg-[#00ff66] text-black border border-black hover:bg-[#25f07a] cursor-pointer"
+                          title="Simpan Judul"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="p-1 bg-[#211c38] text-white border border-black hover:bg-[#ff3b30] cursor-pointer"
+                          title="Batal"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+
+                      {/* Quick goal title picker when editing */}
+                      {goals.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 text-[10px] text-[#8e85aa]">
+                          <span>Pilih dari Target:</span>
+                          {goals.slice(0, 3).map((g) => (
+                            <button
+                              key={g.id}
+                              type="button"
+                              onClick={() => setEditingTitle(g.title)}
+                              className="px-1.5 py-0.5 bg-[#171328] hover:bg-[#251e40] text-[#00f0ff] border border-[#393059] cursor-pointer truncate max-w-[200px]"
+                              title={g.title}
+                            >
+                              {g.title}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 group">

@@ -9,8 +9,11 @@ interface GoalState {
   identities: Identity[];
   goals: Goal[];
   activeIdentityId: string;
+  activeGoalId: string | null;
 
   setActiveIdentityId: (id: string) => void;
+  setActiveGoalId: (id: string | null) => void;
+  getActiveGoal: () => Goal | undefined;
   addIdentity: (identity: Omit<Identity, 'id' | 'createdAt'>) => void;
   updateIdentity: (id: string, updates: Partial<Identity>) => void;
   deleteIdentity: (id: string) => void;
@@ -21,19 +24,38 @@ interface GoalState {
   toggleGoalComplete: (id: string) => void;
 
   // Called when a focus session finishes
-  recordSessionProgress: (identityId: string, durationMinutes: number) => void;
+  recordSessionProgress: (identityId: string, durationMinutes: number, specificGoalId?: string) => void;
 }
 
 export const useGoalStore = create<GoalState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       identities: DEFAULT_IDENTITIES,
       goals: DEFAULT_GOALS,
       activeIdentityId: DEFAULT_IDENTITIES[0]?.id || '',
+      activeGoalId: DEFAULT_GOALS[0]?.id || null,
 
       setActiveIdentityId: (id) => {
         soundFx.playClick();
         set({ activeIdentityId: id });
+      },
+
+      setActiveGoalId: (id) => {
+        soundFx.playClick();
+        if (id) {
+          const targetGoal = get().goals.find((g) => g.id === id);
+          if (targetGoal) {
+            set({ activeGoalId: id, activeIdentityId: targetGoal.identityId });
+            return;
+          }
+        }
+        set({ activeGoalId: id });
+      },
+
+      getActiveGoal: () => {
+        const { activeGoalId, goals } = get();
+        if (!activeGoalId) return undefined;
+        return goals.find((g) => g.id === activeGoalId);
       },
 
       addIdentity: (newId) => {
@@ -95,6 +117,7 @@ export const useGoalStore = create<GoalState>()(
         soundFx.playClick();
         set((state) => ({
           goals: state.goals.filter((g) => g.id !== id),
+          activeGoalId: state.activeGoalId === id ? null : state.activeGoalId,
         }));
       },
 
@@ -111,22 +134,26 @@ export const useGoalStore = create<GoalState>()(
         }));
       },
 
-      recordSessionProgress: (identityId, durationMinutes) => {
+      recordSessionProgress: (identityId, durationMinutes, specificGoalId) => {
         const todayStr = getTodayDateString();
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth() + 1;
 
         set((state) => ({
           goals: state.goals.map((goal) => {
-            if (goal.identityId !== identityId) return goal;
-
             let isRelevant = false;
-            if (goal.period === 'daily' && (!goal.date || goal.date === todayStr)) {
+
+            // If a specific active goal was targeted, advance it directly!
+            if (specificGoalId && goal.id === specificGoalId) {
               isRelevant = true;
-            } else if (goal.period === 'monthly' && (!goal.month || goal.month === currentMonth)) {
-              isRelevant = true;
-            } else if (goal.period === 'annually' && (!goal.year || goal.year === currentYear)) {
-              isRelevant = true;
+            } else if (goal.identityId === identityId) {
+              if (goal.period === 'daily' && (!goal.date || goal.date === todayStr)) {
+                isRelevant = true;
+              } else if (goal.period === 'monthly' && (!goal.month || goal.month === currentMonth)) {
+                isRelevant = true;
+              } else if (goal.period === 'annually' && (!goal.year || goal.year === currentYear)) {
+                isRelevant = true;
+              }
             }
 
             if (!isRelevant) return goal;
@@ -147,6 +174,13 @@ export const useGoalStore = create<GoalState>()(
     }),
     {
       name: 'pixel-pomodoro-goals',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (!state.activeGoalId && state.goals.length > 0) {
+          const firstDaily = state.goals.find((g) => g.period === 'daily' && !g.completed);
+          state.activeGoalId = firstDaily?.id || state.goals[0]?.id || null;
+        }
+      },
     }
   )
 );
