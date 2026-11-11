@@ -24,50 +24,7 @@ interface StatsState {
 export const useStatsStore = create<StatsState>()(
   persist(
     (set, get) => ({
-      sessions: [
-        // Seed initial history so user immediately sees rich stats & heatmap
-        {
-          id: "seed-1",
-          timestamp: Date.now() - 86400000 * 2,
-          dateStr: new Date(Date.now() - 86400000 * 2)
-            .toISOString()
-            .split("T")[0],
-          durationMinutes: 50,
-          mode: "focus",
-          presetId: "deep50",
-          identityId: "id-dev",
-          taskTitle: "Refactor Core Architecture & Design System",
-          xpEarned: 130,
-          goldEarned: 52,
-          completed: true,
-        },
-        {
-          id: "seed-2",
-          timestamp: Date.now() - 86400000,
-          dateStr: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-          durationMinutes: 25,
-          mode: "focus",
-          presetId: "classic",
-          identityId: "id-author",
-          taskTitle: "Draft Technical Essay on Flow State",
-          xpEarned: 50,
-          goldEarned: 20,
-          completed: true,
-        },
-        {
-          id: "seed-3",
-          timestamp: Date.now() - 86400000,
-          dateStr: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-          durationMinutes: 40,
-          mode: "focus",
-          presetId: "flow40",
-          identityId: "id-dev",
-          taskTitle: "Implement Web Audio Synthesizer Engine",
-          xpEarned: 92,
-          goldEarned: 36,
-          completed: true,
-        },
-      ],
+      sessions: [],
       currentStreak: 2,
       longestStreak: 5,
       lastActiveDate: new Date(Date.now() - 86400000)

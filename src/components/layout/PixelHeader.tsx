@@ -1,13 +1,16 @@
 import React from 'react';
-import { Settings, Tv, Sword } from 'lucide-react';
+import { Settings, Tv, Sword, UserCheck, LogIn } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface PixelHeaderProps {
   onOpenSettings: () => void;
+  onOpenAuth: () => void;
 }
 
-export const PixelHeader: React.FC<PixelHeaderProps> = ({ onOpenSettings }) => {
+export const PixelHeader: React.FC<PixelHeaderProps> = ({ onOpenSettings, onOpenAuth }) => {
   const { crtScanlines, toggleCrtScanlines } = useSettingsStore();
+  const { user } = useAuthStore();
 
   return (
     <header className="w-full bg-[#141024] border-b-4 border-black px-4 py-3 shadow-[0_4px_0_0_#000]">
@@ -32,6 +35,30 @@ export const PixelHeader: React.FC<PixelHeaderProps> = ({ onOpenSettings }) => {
 
         {/* Header Action Tools */}
         <div className="flex items-center gap-2">
+          {/* Google Account Button */}
+          <button
+            onClick={onOpenAuth}
+            className={`px-2.5 py-1.5 border-2 cursor-pointer transition-all flex items-center gap-1.5 font-silkscreen text-xs ${
+              user
+                ? 'bg-[#15241b] border-[#00ff66] text-[#00ff66] shadow-[2px_2px_0px_#000]'
+                : 'bg-[#1e1736] border-[#ffd700] text-[#ffd700] hover:bg-[#281f4a]'
+            }`}
+            title={user ? `Akun: ${user.email} (Tersinkronisasi)` : 'Masuk dengan Akun Google'}
+          >
+            {user ? (
+              <>
+                <UserCheck size={14} className="text-[#00ff66]" />
+                <span className="hidden sm:inline truncate max-w-[110px]">{user.name}</span>
+                <span className="w-2 h-2 rounded-full bg-[#00ff66] animate-pulse" />
+              </>
+            ) : (
+              <>
+                <LogIn size={14} className="text-[#ffd700]" />
+                <span className="hidden sm:inline">Akun Google</span>
+              </>
+            )}
+          </button>
+
           {/* CRT scanlines toggle */}
           <button
             onClick={toggleCrtScanlines}

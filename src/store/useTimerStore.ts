@@ -8,6 +8,7 @@ import { useStatsStore } from './useStatsStore';
 import { useGoalStore } from './useGoalStore';
 import { useGamifyStore } from './useGamifyStore';
 import { useSettingsStore } from './useSettingsStore';
+import { useAuthStore } from './useAuthStore';
 
 interface TimerState {
   presets: PomodoroPreset[];
@@ -241,6 +242,9 @@ export const useTimerStore = create<TimerState>()(
           if (activePresetId === 'deep50') {
             useGamifyStore.getState().unlockBadge('badge-deep-diver');
           }
+
+          // 6. Auto-sync to Google Account if logged in
+          useAuthStore.getState().saveAccountData();
 
           // Browser notification
           if (Notification.permission === 'granted') {

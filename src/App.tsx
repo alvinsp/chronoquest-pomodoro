@@ -8,6 +8,7 @@ import { PixelShopModal } from './components/gamify/PixelShop';
 import { AvatarSelectorModal } from './components/gamify/AvatarSelectorModal';
 import { BossBattleCard } from './components/gamify/BossBattleCard';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { GoogleAuthModal } from './components/auth/GoogleAuthModal';
 
 import { PresetSelector } from './components/timer/PresetSelector';
 import { TimerDisplay } from './components/timer/TimerDisplay';
@@ -42,6 +43,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isZenOpen, setIsZenOpen] = useState(false);
   const [isAddDailyGoalOpen, setIsAddDailyGoalOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const { status, mode, timeRemaining, tick } = useTimerStore();
   const { theme, crtScanlines } = useSettingsStore();
@@ -94,7 +96,10 @@ export function App() {
   return (
     <div className={`min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] flex flex-col ${crtScanlines ? 'crt-overlay crt-vignette' : ''}`}>
       {/* Top Header */}
-      <PixelHeader onOpenSettings={() => setIsSettingsOpen(true)} />
+      <PixelHeader
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
+      />
 
       {/* Navigation Bar */}
       <NavigationBar
@@ -276,6 +281,7 @@ export function App() {
       <PixelShopModal isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
       <AvatarSelectorModal isOpen={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <GoogleAuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <ZenFocusMode isOpen={isZenOpen} onClose={() => setIsZenOpen(false)} />
       <AddGoalModal
         isOpen={isAddDailyGoalOpen}
