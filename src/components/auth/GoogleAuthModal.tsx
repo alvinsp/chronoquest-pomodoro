@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   LogIn,
   LogOut,
-  RefreshCw,
   CheckCircle,
   ShieldCheck,
-  Mail,
   Sparkles,
   AlertCircle,
   Smartphone,
@@ -15,7 +13,6 @@ import {
   QrCode,
   Copy,
   Check,
-  HelpCircle,
   Cloud,
   CloudUpload,
   CloudDownload,
@@ -26,7 +23,7 @@ import { useStatsStore } from '../../store/useStatsStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { formatDatePretty } from '../../utils/formatters';
-import { generateSyncUrlAndQr, decodeSyncPayloadString, applySyncPayloadToLocalStorage } from '../../utils/syncManager';
+import { generateSyncUrlAndQr } from '../../utils/syncManager';
 import {
   saveFirebaseConfig,
   clearFirebaseConfig,
@@ -73,14 +70,10 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     user,
     googleClientId,
     lastSyncedAt,
-    isAutoSyncEnabled,
     isGoogleVerified,
     loginWithGoogleProfile,
     logout,
-    saveAccountData,
-    loadAccountData,
     setGoogleClientId,
-    toggleAutoSync,
   } = useAuthStore();
 
   const { exportDataJson } = useStatsStore();
@@ -93,7 +86,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');
   const [clientIdInput, setClientIdInput] = useState(effectiveClientId);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
 
@@ -103,10 +95,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [syncUrl, setSyncUrl] = useState('');
   const [isTooLargeForQr, setIsTooLargeForQr] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [payloadCodeString, setPayloadCodeString] = useState('');
-  const [pastedCode, setPastedCode] = useState('');
-  const [isApplyingCode, setIsApplyingCode] = useState(false);
 
   // Firebase Cloud Sync state
   const [isCloudConfiguredState, setIsCloudConfiguredState] = useState(isFirebaseConfigured());
@@ -179,7 +167,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     generateSyncUrlAndQr(email)
       .then((res) => {
         setSyncUrl(res.syncUrl);
-        setPayloadCodeString(res.payloadCode);
         if (res.qrDataUrl) {
           setQrImageUrl(res.qrDataUrl);
           setIsTooLargeForQr(false);
@@ -200,7 +187,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         const res = await generateSyncUrlAndQr(email);
         targetUrl = res.syncUrl;
         setSyncUrl(res.syncUrl);
-        setPayloadCodeString(res.payloadCode);
       }
       await navigator.clipboard.writeText(targetUrl);
       setCopiedLink(true);
@@ -208,45 +194,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
       setSyncSuccessMsg('🎉 Link berhasil disalin! Kirim via WA/Telegram ke HP-mu dan buka di browser HP.');
     } catch {
       setSyncSuccessMsg('Salin teks link dari kotak di bawah.');
-    }
-  };
-
-  const handleCopyPayloadCode = async () => {
-    try {
-      let code = payloadCodeString;
-      if (!code) {
-        const email = user?.email || 'alvin1234putra@gmail.com';
-        const res = await generateSyncUrlAndQr(email);
-        code = res.payloadCode;
-        setPayloadCodeString(res.payloadCode);
-      }
-      await navigator.clipboard.writeText(code);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 3000);
-      setSyncSuccessMsg('✓ Kode teks berhasil disalin!');
-    } catch {
-      setSyncSuccessMsg('Silakan salin teks kode secara manual.');
-    }
-  };
-
-  const handleApplyPastedCode = async () => {
-    if (!pastedCode.trim()) return;
-    setIsApplyingCode(true);
-    try {
-      const payload = await decodeSyncPayloadString(pastedCode.trim());
-      if (payload) {
-        const ok = applySyncPayloadToLocalStorage(payload);
-        if (ok) {
-          alert(`🎉 Berhasil menyinkronkan data akun (${payload.userEmail})! Halaman akan dimuat ulang.`);
-          window.location.reload();
-          return;
-        }
-      }
-      setSyncSuccessMsg('Kode sinkronisasi tidak valid.');
-    } catch {
-      setSyncSuccessMsg('Gagal memproses kode sinkronisasi.');
-    } finally {
-      setIsApplyingCode(false);
     }
   };
 
@@ -413,29 +360,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     setSyncSuccessMsg(`Data saat ini berhasil diikat ke profil: ${inputEmail}`);
   };
 
-  const handleManualSync = () => {
-    setIsSyncing(true);
-    saveAccountData();
-    setTimeout(() => {
-      setIsSyncing(false);
-      setSyncSuccessMsg('Data lokal saat ini berhasil disimpan ke profil Akun Google!');
-    }, 400);
-  };
-
-  const handleManualRestore = () => {
-    setIsSyncing(true);
-    const success = loadAccountData();
-    setTimeout(() => {
-      setIsSyncing(false);
-      if (success) {
-        setSyncSuccessMsg('Data akun berhasil dipulihkan!');
-        window.location.reload();
-      } else {
-        setSyncSuccessMsg('Belum ada data cadangan tersimpan untuk akun ini.');
-      }
-    }, 400);
-  };
-
   const handleDownloadBackup = () => {
     const jsonStr = exportDataJson();
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -449,19 +373,19 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   };
 
   const renderFirebaseCloudSync = () => (
-    <div className="p-4 bg-[#0d1424] border-2 border-[#ff9900] space-y-3 shadow-[2px_2px_0px_#000]">
-      <div className="flex items-center justify-between gap-2 border-b border-[#22334f] pb-2">
+    <div className="p-4 bg-[#0d1626] border-2 border-[#00f0ff] space-y-3 shadow-[2px_2px_0px_#000]">
+      <div className="flex items-center justify-between gap-2 border-b border-[#1b2d49] pb-2">
         <div className="flex items-center gap-2">
-          <Cloud size={16} className="text-[#ff9900]" />
-          <h4 className="font-silkscreen text-xs font-bold text-[#ff9900] uppercase">
-            Firebase Cloud Database (Auto-Sync Realtime)
+          <Cloud size={16} className="text-[#00f0ff]" />
+          <h4 className="font-silkscreen text-xs font-bold text-[#00f0ff] uppercase">
+            Sinkronisasi Cloud Real-Time
           </h4>
         </div>
         <span
-          className={`text-[9px] font-pixel px-1.5 py-0.5 border ${
+          className={`text-[9px] font-pixel px-2 py-0.5 border ${
             isCloudConfiguredState
-              ? 'bg-[#00ff66]/20 text-[#00ff66] border-[#00ff66]'
-              : 'bg-[#ff9900]/20 text-[#ff9900] border-[#ff9900]'
+              ? 'bg-[#00ff66]/20 text-[#00ff66] border-[#00ff66] font-bold'
+              : 'bg-[#ffd700]/20 text-[#ffd700] border-[#ffd700]'
           }`}
         >
           {isCloudConfiguredState ? 'AKTIF ✓' : 'SETUP'}
@@ -470,43 +394,43 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
 
       {isCloudConfiguredState ? (
         <div className="space-y-3">
-          <p className="text-[11px] text-[#b8cce6] leading-relaxed">
-            🟢 <strong>Firebase Cloud Database aktif!</strong> Setiap kali kamu menyelesaikan sesi pomodoro, data otomatis diunggah ke cloud dan langsung sinkron ke seluruh perangkatmu (Laptop & HP) secara *realtime*.
-          </p>
+          <div className="p-2.5 bg-[#07101c] border border-[#1d324d] text-[11px] text-[#a9c2e2] leading-relaxed">
+            🟢 <strong>Semua data sudah otomatis tersinkron!</strong> Setiap kali kamu menyelesaikan sesi fokus Pomodoro, menaikkan level, atau memperbarui target harian, data langsung tersimpan di awan dan sinkron di Laptop & HP.
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={handlePushToCloud}
               disabled={isPushingCloud}
-              className="py-2.5 px-3 bg-[#ff9900] hover:bg-[#ffaa22] active:bg-[#e68800] text-black font-silkscreen font-bold text-xs border border-black flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_#000]"
+              className="py-2.5 px-3 bg-[#00f0ff] hover:bg-[#33f3ff] active:bg-[#00ccde] text-black font-silkscreen font-bold text-xs border border-black flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_#000] transition-all"
             >
               <CloudUpload size={14} className={isPushingCloud ? 'animate-bounce' : ''} />
-              <span>{isPushingCloud ? 'Mengunggah...' : 'Unggah ke Cloud'}</span>
+              <span>{isPushingCloud ? 'Mengunggah...' : 'Sinkronkan Sekarang'}</span>
             </button>
 
             <button
               type="button"
               onClick={handlePullFromCloud}
               disabled={isPullingCloud}
-              className="py-2.5 px-3 bg-[#192a42] hover:bg-[#253d61] active:bg-[#121f31] text-[#ff9900] font-silkscreen font-bold text-xs border border-[#ff9900] flex items-center justify-center gap-1.5 cursor-pointer"
+              className="py-2.5 px-3 bg-[#152336] hover:bg-[#1f334e] active:bg-[#0e1927] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
             >
               <CloudDownload size={14} className={isPullingCloud ? 'animate-bounce' : ''} />
-              <span>{isPullingCloud ? 'Menarik...' : 'Ambil dari Cloud'}</span>
+              <span>{isPullingCloud ? 'Menarik...' : 'Muat dari Cloud'}</span>
             </button>
           </div>
 
-          <div className="flex justify-between items-center pt-1 text-[10px] text-[#7186a2]">
+          <div className="flex justify-between items-center pt-1 text-[10px] text-[#6d829e]">
             <button
               type="button"
               onClick={() => {
                 const raw = localStorage.getItem('chronoquest_firebase_config');
                 if (raw) {
                   navigator.clipboard.writeText(raw);
-                  setSyncSuccessMsg('✓ Konfigurasi Firebase disalin ke clipboard! Kirim ke WA/Telegram ke HP-mu.');
+                  setSyncSuccessMsg('✓ Konfigurasi Firebase disalin ke clipboard! Kirim via WA/Telegram ke HP-mu.');
                 }
               }}
-              className="text-[#00f0ff] hover:underline cursor-pointer flex items-center gap-1 text-[10px]"
+              className="text-[#00f0ff] hover:underline cursor-pointer flex items-center gap-1"
             >
               <Copy size={11} /> Salin Config untuk HP
             </button>
@@ -529,7 +453,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <button
               type="button"
               onClick={() => setShowFirebaseSetup(true)}
-              className="w-full py-2 px-3 bg-[#1c2c44] hover:bg-[#283e60] text-[#ff9900] font-silkscreen font-bold text-xs border border-[#ff9900] flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 bg-[#1c2c44] hover:bg-[#283e60] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Settings size={13} />
               <span>Buka Form Konfigurasi Firebase</span>
@@ -537,7 +461,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
           ) : (
             <div className="p-3 bg-[#080d17] border border-[#233754] space-y-2.5">
               <div className="text-[10px] text-[#90a8c9] space-y-1 leading-relaxed">
-                <span className="font-bold text-[#ff9900] block">Cara mendapatkan Firebase Config (Gratis 2 Menit):</span>
+                <span className="font-bold text-[#ffd700] block">Cara mendapatkan Firebase Config (Gratis 2 Menit):</span>
                 <ol className="list-decimal list-inside space-y-0.5">
                   <li>Buka <strong>console.firebase.google.com</strong></li>
                   <li>Pilih projectmu (atau buat baru, misal project <code className="text-[#00f0ff]">1069804020855</code>).</li>
@@ -547,7 +471,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               </div>
 
               <div>
-                <label className="block text-[10px] text-[#ff9900] font-silkscreen mb-1">
+                <label className="block text-[10px] text-[#ffd700] font-silkscreen mb-1">
                   Tempelkan objek firebaseConfig di sini:
                 </label>
                 <textarea
@@ -604,141 +528,70 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   );
 
   const renderCrossDeviceSync = () => (
-    <div className="p-4 bg-[#101928] border-2 border-[#00f0ff] space-y-3.5 shadow-[2px_2px_0px_#000]">
-      <div className="flex items-center justify-between gap-2 border-b border-[#1f304d] pb-2">
+    <details className="p-3 bg-[#0c1420] border-2 border-[#1c304a] text-xs font-silkscreen group shadow-[2px_2px_0px_#000]">
+      <summary className="cursor-pointer text-[#8ea3bf] hover:text-[#00f0ff] text-xs font-bold flex items-center justify-between select-none">
         <div className="flex items-center gap-2">
-          <Smartphone size={16} className="text-[#00f0ff]" />
-          <h4 className="font-silkscreen text-xs font-bold text-[#00f0ff] uppercase">
-            Sinkronkan HP ⇄ Laptop (Link & QR Instan)
-          </h4>
+          <Smartphone size={15} className="text-[#00f0ff]" />
+          <span>Cadangan Manual: Salin Link / QR Code (Jika Offline)</span>
         </div>
-        <span className="text-[9px] font-pixel px-1.5 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]">
-          SOLUSI MULTI-DEVICE
+        <span className="text-[10px] text-[#667a94] group-open:rotate-180 transition-transform">
+          ▼
         </span>
-      </div>
+      </summary>
 
-      {/* Explanation note */}
-      <div className="p-2.5 bg-[#0a121e] border border-[#1b2b46] flex items-start gap-2 text-[10px] text-[#9bb0cf] leading-relaxed">
-        <HelpCircle size={14} className="text-[#00f0ff] shrink-0 mt-0.5" />
-        <p>
-          <strong>Kenapa data di HP & Laptop berbeda?</strong> Memori browser (localStorage) Laptop dan HP berada di perangkat fisik yang berbeda. Gunakan tombol link atau scan QR di bawah ini untuk <strong>menyalin 100% progres (level, gold, target, catatan, dan statistik) dari Laptop ke HP</strong> dalam 3 detik!
+      <div className="pt-3 space-y-2.5 border-t border-[#1a2c44] mt-2">
+        <p className="text-[10px] text-[#9bb0cf] leading-relaxed">
+          Gunakan tombol di bawah jika kamu ingin menyalin data secara offline atau mengirim link langsung ke browser HP tanpa cloud.
         </p>
-      </div>
 
-      {/* 1. ALWAYS VISIBLE PRIMARY ACTION: 1-CLICK COPY SYNC LINK */}
-      <div className="space-y-2 bg-[#09111c] p-3 border-2 border-[#00ff66]">
         <button
           type="button"
           onClick={handleCopySyncLinkDirect}
-          className="w-full py-3 px-4 bg-[#00ff66] hover:bg-[#33ff85] active:bg-[#00cc52] text-black font-silkscreen font-bold text-xs sm:text-sm border-2 border-black shadow-[3px_3px_0px_#000] flex items-center justify-center gap-2 cursor-pointer transition-all"
+          className="w-full py-2.5 px-3 bg-[#00ff66] hover:bg-[#33ff85] active:bg-[#00cc52] text-black font-silkscreen font-bold text-xs border border-black shadow-[2px_2px_0px_#000] flex items-center justify-center gap-2 cursor-pointer transition-all"
         >
-          {copiedLink ? <Check size={16} /> : <Copy size={16} />}
+          {copiedLink ? <Check size={15} /> : <Copy size={15} />}
           <span>{copiedLink ? '✓ LINK TERSALIN KE CLIPBOARD!' : '📋 Salin Link Sinkronisasi HP (1-Klik)'}</span>
         </button>
 
-        {/* Text field showing the sync link directly */}
-        <div className="flex items-center gap-1.5 bg-[#0e1a2b] border border-[#233857] p-2">
-          <input
-            type="text"
-            readOnly
-            value={syncUrl}
-            placeholder="Membuat tautan sinkronisasi..."
-            onClick={(e) => (e.target as HTMLInputElement).select()}
-            className="w-full bg-transparent text-[10px] text-[#00f0ff] font-mono outline-none cursor-pointer"
-          />
-        </div>
-        <p className="text-[10px] text-[#a9bed8] leading-tight">
-          💡 <strong>Cara pakai:</strong> Klik tombol hijau di atas, kirim link-nya ke WhatsApp / Telegram Web dirimu sendiri, lalu ketuk link itu di browser HP-mu.
-        </p>
-      </div>
+        <input
+          type="text"
+          readOnly
+          value={syncUrl}
+          placeholder="Membuat tautan..."
+          onClick={(e) => (e.target as HTMLInputElement).select()}
+          className="w-full bg-[#080e18] border border-[#233857] p-1.5 text-[10px] text-[#00f0ff] font-mono outline-none cursor-pointer"
+        />
 
-      {/* 2. QR CODE SECTION */}
-      <div className="pt-2 border-t border-[#1e2f4a] space-y-2">
-        {!showQrSync ? (
-          <button
-            type="button"
-            onClick={() => setShowQrSync(true)}
-            className="w-full py-2 px-3 bg-[#17253a] hover:bg-[#233857] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] cursor-pointer flex items-center justify-center gap-2 transition-all"
-          >
-            <QrCode size={14} />
-            <span>Tampilkan QR Code untuk Scan Kamera HP</span>
-          </button>
-        ) : (
-          <div className="p-3 bg-[#0a121e] border border-[#1c2e4a] space-y-2">
-            {qrImageUrl && !isTooLargeForQr ? (
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="p-2 bg-white border-2 border-black shrink-0">
-                  <img src={qrImageUrl} alt="QR Code Sinkronisasi" className="w-36 h-36" />
-                </div>
-                <div className="space-y-1 text-center sm:text-left">
-                  <span className="font-pixel text-[10px] text-[#00ff66] block">
-                    ✓ QR CODE AKTIF:
-                  </span>
-                  <p className="text-[11px] text-[#d6e2f4] leading-relaxed">
-                    Arahkan kamera HP ke QR Code di samping. Seluruh progres akan langsung dimuat di HP.
+        <div className="pt-1">
+          {!showQrSync ? (
+            <button
+              type="button"
+              onClick={() => setShowQrSync(true)}
+              className="text-[10px] text-[#00f0ff] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <QrCode size={12} /> Tampilkan QR Code untuk Scan Kamera HP
+            </button>
+          ) : (
+            <div className="p-2.5 bg-[#080e18] border border-[#1c2e4a] flex items-center gap-3">
+              {qrImageUrl && !isTooLargeForQr ? (
+                <>
+                  <div className="p-1 bg-white border border-black shrink-0">
+                    <img src={qrImageUrl} alt="QR Code" className="w-20 h-20" />
+                  </div>
+                  <p className="text-[10px] text-[#d6e2f4] leading-relaxed">
+                    Arahkan kamera HP ke QR Code untuk menyalin progres.
                   </p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-2.5 bg-[#26180a] border border-[#ffd700] text-[10px] text-[#ffd700]">
-                ⚠️ Data riwayat fokus kamu cukup panjang untuk sebuah QR Code fisik. Gunakan tombol hijau <strong>"Salin Link Sinkronisasi"</strong> di atas (100% didukung tanpa batas ukuran).
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 3. MANUAL CODE BACKUP & RESTORE */}
-      <div className="pt-2 border-t border-[#1e2f4a]">
-        <details className="text-[10px] text-[#869cb8]">
-          <summary className="cursor-pointer text-[#00f0ff] hover:underline font-silkscreen">
-            Opsi Alternatif: Salin / Tempel Kode Teks Cadangan
-          </summary>
-          <div className="mt-2.5 space-y-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={payloadCodeString}
-                placeholder="Kode teks cadangan..."
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                className="w-full bg-[#0a101b] border border-[#233857] p-1.5 text-[10px] text-[#a9c2e0] font-mono outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleCopyPayloadCode}
-                className="px-2.5 py-1 bg-[#233857] hover:bg-[#324f7a] text-white font-silkscreen text-[10px] border border-black cursor-pointer shrink-0"
-              >
-                {copiedCode ? 'Tersalin!' : 'Salin Kode'}
-              </button>
+                </>
+              ) : (
+                <p className="text-[10px] text-[#ffd700]">
+                  Gunakan tombol Salin Link di atas.
+                </p>
+              )}
             </div>
-
-            <div className="pt-2 border-t border-[#19273c]">
-              <label className="block text-[10px] text-[#8aa0ba] mb-1">
-                Tempel Kode dari Perangkat Lain di sini:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={pastedCode}
-                  onChange={(e) => setPastedCode(e.target.value)}
-                  placeholder="Tempel kode sinkronisasi (gz:H4sI...)..."
-                  className="w-full bg-[#0a101b] border border-[#233857] p-1.5 text-[10px] text-[#00f0ff] font-mono outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPastedCode}
-                  disabled={isApplyingCode || !pastedCode.trim()}
-                  className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs border border-black cursor-pointer hover:bg-[#33ff85] shrink-0"
-                >
-                  {isApplyingCode ? 'Memproses...' : 'Terapkan'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </details>
+          )}
+        </div>
       </div>
-    </div>
+    </details>
   );
 
   return (
@@ -748,20 +601,22 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
           /* User is Logged In */
           <div className="space-y-4">
             {/* Account Card */}
-            <div className="p-4 bg-[#120f20] border-2 border-[#00ff66] flex items-center gap-3.5 shadow-[2px_2px_0px_#000]">
-              <div className="w-12 h-12 border-2 border-black bg-[#231d37] overflow-hidden shrink-0 flex items-center justify-center">
+            <div className="p-3.5 bg-[#0f0c1b] border-2 border-[#00ff66] flex items-center gap-3 shadow-[2px_2px_0px_#000]">
+              <div className="w-11 h-11 border-2 border-black bg-[#231d37] overflow-hidden shrink-0 flex items-center justify-center">
                 {user.picture ? (
                   <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <Mail size={24} className="text-[#00f0ff]" />
+                  <div className="font-pixel font-bold text-sm text-[#00ff66]">
+                    {user.name ? user.name[0].toUpperCase() : 'A'}
+                  </div>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-pixel text-xs text-[#00ff66] truncate">{user.name}</h4>
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <h4 className="font-pixel text-xs text-[#00ff66] truncate max-w-[200px]">{user.name}</h4>
                   <span
-                    className={`text-[9px] font-pixel px-1.5 py-0.5 border ${
+                    className={`text-[9px] font-pixel px-1.5 py-0.5 border shrink-0 ${
                       isGoogleVerified
                         ? 'bg-[#052e16] text-[#00ff66] border-[#00ff66]'
                         : 'bg-[#332205] text-[#ffd700] border-[#ffd700]'
@@ -770,11 +625,15 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                     {isGoogleVerified ? 'GOOGLE VERIFIED ✓' : 'EMAIL PROFILE'}
                   </span>
                 </div>
-                <p className="text-xs text-[#a097bd] truncate mt-0.5">{user.email}</p>
-                <p className="text-[10px] text-[#6d648b] mt-1">
-                  Sinkronisasi Terakhir:{' '}
-                  {lastSyncedAt ? formatDatePretty(lastSyncedAt.split('T')[0]) : 'Baru saja'}
-                </p>
+                <p className="text-[11px] text-[#a097bd] truncate font-mono mt-0.5">{user.email}</p>
+                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[#788da6]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff66] inline-block animate-pulse shrink-0" />
+                  <span>Cloud Auto-Sync: Aktif</span>
+                  <span className="text-[#4b5a6d]">•</span>
+                  <span className="text-[#5b6e85]">
+                    {lastSyncedAt ? formatDatePretty(lastSyncedAt.split('T')[0]) : 'Baru saja'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -824,51 +683,10 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             {/* Cross-Device Sync (HP ⇄ Laptop) */}
             {renderCrossDeviceSync()}
 
-            {/* Sync Controls */}
-            <div className="p-3 bg-[#161226] border-2 border-[#2b2447] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-[#f0edf6]">Simpan Otomatis (Auto-Sync)</span>
-                  <p className="text-[10px] text-[#786f94]">
-                    Menyimpan otomatis setiap kali sesi fokus pomodoro selesai.
-                  </p>
-                </div>
-                <button
-                  onClick={toggleAutoSync}
-                  className={`px-3 py-1 font-pixel text-xs border cursor-pointer ${
-                    isAutoSyncEnabled ? 'bg-[#00ff66] text-black border-black' : 'bg-[#2b2445] text-[#8e85aa] border-black'
-                  }`}
-                >
-                  {isAutoSyncEnabled ? 'AKTIF' : 'OFF'}
-                </button>
-              </div>
-
-              <div className="pt-2 border-t border-[#261f3e] grid grid-cols-2 gap-2">
-                <PixelButton
-                  variant="primary"
-                  size="sm"
-                  onClick={handleManualSync}
-                  disabled={isSyncing}
-                >
-                  <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                  <span>Kunci & Simpan Data Saat Ini</span>
-                </PixelButton>
-
-                <PixelButton
-                  variant="retro-dark"
-                  size="sm"
-                  onClick={handleManualRestore}
-                  disabled={isSyncing}
-                >
-                  <span>Muat Ulang Data Akun</span>
-                </PixelButton>
-              </div>
-            </div>
-
             {/* Safety Backup Download Button */}
-            <div className="p-2.5 bg-[#0d0c15] border border-[#2b2447] flex items-center justify-between">
-              <span className="text-[10px] text-[#9f97ba]">
-                Ingin punya salinan file cadangan mandiri?
+            <div className="p-2.5 bg-[#0a0f17] border border-[#1a2d45] flex items-center justify-between">
+              <span className="text-[10px] text-[#869ab3]">
+                Cadangan Mandiri (Offline File):
               </span>
               <button
                 type="button"
