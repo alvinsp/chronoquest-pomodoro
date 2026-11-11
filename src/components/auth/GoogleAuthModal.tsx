@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone, Download, Key, Zap } from 'lucide-react';
+import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone, Download, Key, Zap, QrCode, Copy, Check, HelpCircle } from 'lucide-react';
 import { useAuthStore, DEFAULT_GOOGLE_CLIENT_ID } from '../../store/useAuthStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { formatDatePretty } from '../../utils/formatters';
+import { generateSyncUrlAndQr, decodeSyncPayloadString, applySyncPayloadToLocalStorage } from '../../utils/syncManager';
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
@@ -66,6 +67,64 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+
+  // Cross-device QR & Link Sync state
+  const [showQrSync, setShowQrSync] = useState(false);
+  const [qrImageUrl, setQrImageUrl] = useState('');
+  const [syncUrl, setSyncUrl] = useState('');
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [pastedCode, setPastedCode] = useState('');
+  const [isApplyingCode, setIsApplyingCode] = useState(false);
+
+  const handleGenerateQr = async () => {
+    setIsGeneratingQr(true);
+    setSyncSuccessMsg('');
+    try {
+      const email = user?.email || 'alvin1234putra@gmail.com';
+      const result = await generateSyncUrlAndQr(email);
+      setQrImageUrl(result.qrDataUrl);
+      setSyncUrl(result.syncUrl);
+      setShowQrSync(true);
+    } catch {
+      setSyncSuccessMsg('Gagal menghasilkan QR Code.');
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  const handleCopySyncLink = async () => {
+    if (!syncUrl) return;
+    try {
+      await navigator.clipboard.writeText(syncUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+      setSyncSuccessMsg('✓ Link Sinkronisasi disalin! Kirim via WA/Telegram ke HP-mu dan buka di browser HP.');
+    } catch {
+      setSyncSuccessMsg('Silakan salin link secara manual.');
+    }
+  };
+
+  const handleApplyPastedCode = async () => {
+    if (!pastedCode.trim()) return;
+    setIsApplyingCode(true);
+    try {
+      const payload = await decodeSyncPayloadString(pastedCode.trim());
+      if (payload) {
+        const ok = applySyncPayloadToLocalStorage(payload);
+        if (ok) {
+          alert(`🎉 Berhasil menyinkronkan data akun (${payload.userEmail})! Halaman akan dimuat ulang.`);
+          window.location.reload();
+          return;
+        }
+      }
+      setSyncSuccessMsg('Kode sinkronisasi tidak valid.');
+    } catch {
+      setSyncSuccessMsg('Gagal memproses kode sinkronisasi.');
+    } finally {
+      setIsApplyingCode(false);
+    }
+  };
 
   // Dynamically ensure Google Identity Services script is loaded
   useEffect(() => {
@@ -265,6 +324,101 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     setSyncSuccessMsg('File cadangan berhasil di-download.');
   };
 
+  const renderCrossDeviceSync = () => (
+    <div className="p-4 bg-[#101928] border-2 border-[#00f0ff] space-y-3 shadow-[2px_2px_0px_#000]">
+      <div className="flex items-center justify-between gap-2 border-b border-[#1f304d] pb-2">
+        <div className="flex items-center gap-2">
+          <Smartphone size={16} className="text-[#00f0ff]" />
+          <h4 className="font-silkscreen text-xs font-bold text-[#00f0ff] uppercase">
+            Sinkronkan HP ⇄ Laptop (Scan QR & Link Cepat)
+          </h4>
+        </div>
+        <span className="text-[9px] font-pixel px-1.5 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]">
+          MULTI-DEVICE
+        </span>
+      </div>
+
+      {/* Explanation note */}
+      <div className="p-2.5 bg-[#0a121e] border border-[#1b2b46] flex items-start gap-2 text-[10px] text-[#9bb0cf] leading-relaxed">
+        <HelpCircle size={14} className="text-[#00f0ff] shrink-0 mt-0.5" />
+        <p>
+          <strong>Kenapa data di HP & Laptop berbeda?</strong> Memori browser (localStorage) Laptop dan HP berada di perangkat fisik yang berbeda. Gunakan QR Code atau Link di bawah ini untuk <strong>menyalin 100% progres (level, gold, target, catatan, dan statistik) dari Laptop ke HP</strong> dalam 3 detik!
+        </p>
+      </div>
+
+      {/* QR Code generator button or display */}
+      {!showQrSync ? (
+        <button
+          type="button"
+          onClick={handleGenerateQr}
+          disabled={isGeneratingQr}
+          className="w-full py-2.5 px-3 bg-[#00f0ff] hover:bg-[#33f3ff] text-black font-silkscreen font-bold text-xs border-2 border-black cursor-pointer shadow-[2px_2px_0px_#000] flex items-center justify-center gap-2 transition-all"
+        >
+          <QrCode size={16} />
+          <span>{isGeneratingQr ? 'Menghasilkan QR...' : 'Tampilkan QR Code Sinkronisasi HP'}</span>
+        </button>
+      ) : (
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#0a121e] p-3 border border-[#1c2e4a]">
+            {/* QR Code Image */}
+            <div className="p-2 bg-white border-2 border-black shrink-0">
+              <img src={qrImageUrl} alt="QR Code Sinkronisasi" className="w-36 h-36" />
+            </div>
+
+            <div className="flex-1 space-y-2 text-center sm:text-left">
+              <span className="font-pixel text-[10px] text-[#00ff66] block">
+                ✓ QR CODE SIAP DI-SCAN:
+              </span>
+              <p className="text-[11px] text-[#d6e2f4] leading-relaxed">
+                Buka kamera di HP-mu, arahkan ke QR Code di samping. Halaman di HP akan otomatis menyalin seluruh level & target dari laptop!
+              </p>
+
+              <div className="pt-1 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopySyncLink}
+                  className="py-1.5 px-3 bg-[#1d2c44] hover:bg-[#283d5f] text-[#00f0ff] font-silkscreen text-xs font-bold border border-[#00f0ff] cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {copiedLink ? <Check size={14} className="text-[#00ff66]" /> : <Copy size={14} />}
+                  <span>{copiedLink ? 'Link Tersalin!' : 'Salin Link Sinkronisasi'}</span>
+                </button>
+                <p className="text-[9px] text-[#768ba7]">
+                  Bisa kamu kirim ke WhatsApp / Telegram Web, lalu klik link tersebut di HP.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paste code manual option */}
+      <div className="pt-2 border-t border-[#1e2f4a]">
+        <details className="text-[10px] text-[#869cb8]">
+          <summary className="cursor-pointer text-[#00f0ff] hover:underline font-silkscreen">
+            Opsi Manual: Tempel Kode Sinkronisasi dari Perangkat Lain
+          </summary>
+          <div className="mt-2 space-y-2">
+            <input
+              type="text"
+              value={pastedCode}
+              onChange={(e) => setPastedCode(e.target.value)}
+              placeholder="Tempel kode sinkronisasi (gz:H4sI...)..."
+              className="w-full bg-[#0a101b] border border-[#233857] p-1.5 text-[10px] text-[#00f0ff] font-mono outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleApplyPastedCode}
+              disabled={isApplyingCode || !pastedCode.trim()}
+              className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs border border-black cursor-pointer hover:bg-[#33ff85]"
+            >
+              {isApplyingCode ? 'Memproses...' : 'Terapkan Kode ke Perangkat Ini'}
+            </button>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+
   return (
     <PixelModal isOpen={isOpen} onClose={onClose} title="🔐 Akun Google & Cloud Sync" maxWidth="md">
       <div className="space-y-4 text-xs font-silkscreen">
@@ -341,6 +495,9 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 <span>{syncSuccessMsg}</span>
               </div>
             )}
+
+            {/* Cross-Device Sync (HP ⇄ Laptop) */}
+            {renderCrossDeviceSync()}
 
             {/* Sync Controls */}
             <div className="p-3 bg-[#161226] border-2 border-[#2b2447] space-y-2.5">
@@ -478,6 +635,9 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 <span>{syncSuccessMsg}</span>
               </div>
             )}
+
+            {/* Cross-Device Sync (HP ⇄ Laptop) */}
+            {renderCrossDeviceSync()}
 
             {/* Fast Google Login by Email Form */}
             <form onSubmit={handleCustomLogin} className="p-4 bg-[#120f20] border-2 border-[#2b2545] space-y-3">

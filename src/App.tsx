@@ -33,6 +33,7 @@ import { useSettingsStore } from './store/useSettingsStore';
 import { useGamifyStore } from './store/useGamifyStore';
 import { useAuthStore } from './store/useAuthStore';
 import { formatTime } from './utils/formatters';
+import { decodeSyncPayloadString, applySyncPayloadToLocalStorage } from './utils/syncManager';
 import { Trophy, Sparkles } from 'lucide-react';
 
 export function App() {
@@ -80,6 +81,30 @@ export function App() {
             }
           })
           .catch(() => {});
+      }
+    }
+  }, []);
+
+  // Cross-device sync listener (Receives payload from QR code or sync URL link)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (hash && hash.includes('sync=')) {
+      const match = hash.match(/sync=([^&]+)/);
+      if (match && match[1]) {
+        const rawCode = decodeURIComponent(match[1]);
+        decodeSyncPayloadString(rawCode).then((payload) => {
+          if (payload) {
+            const success = applySyncPayloadToLocalStorage(payload);
+            if (success) {
+              window.history.replaceState(null, '', window.location.pathname);
+              alert(
+                `🎉 SINKRONISASI PERANGKAT BERHASIL!\n\nSeluruh data akun (${payload.userEmail}) telah disalin ke perangkat ini.\n\nHalaman akan dimuat ulang dengan data terbarumu.`
+              );
+              window.location.reload();
+            }
+          }
+        });
       }
     }
   }, []);
