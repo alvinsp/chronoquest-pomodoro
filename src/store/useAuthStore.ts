@@ -3,6 +3,11 @@ import { persist } from 'zustand/middleware';
 import type { GoogleUser, UserAccountBackup } from '../types/auth';
 import { soundFx } from '../audio/synthAudio';
 import confetti from 'canvas-confetti';
+import {
+  pushLocalDataToFirestore,
+  pullLatestDataFromFirestore,
+  isFirebaseConfigured,
+} from '../services/firebase';
 
 export const DEFAULT_GOOGLE_CLIENT_ID = '1069804020855-a4i8m7o86ofrkrdkog916br72pbufost.apps.googleusercontent.com';
 
@@ -23,6 +28,9 @@ interface AuthState {
   saveAccountData: () => void;
   loadAccountData: () => boolean;
   bindCurrentDataToEmail: (email: string) => void;
+  syncToCloud: () => Promise<boolean>;
+  syncFromCloud: () => Promise<boolean>;
+  isCloudConfigured: () => boolean;
 }
 
 // Decode standard base64 Google JWT payload
@@ -157,6 +165,11 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem(key, JSON.stringify(backup));
 
           set({ lastSyncedAt: new Date().toISOString() });
+
+          // Auto-push to Firebase cloud if configured
+          if (isFirebaseConfigured()) {
+            pushLocalDataToFirestore(user.email).catch(() => {});
+          }
         } catch {
           // ignore storage error
         }
@@ -194,6 +207,28 @@ export const useAuthStore = create<AuthState>()(
           return false;
         }
       },
+
+      syncToCloud: async () => {
+        const { user } = get();
+        if (!user) return false;
+        const ok = await pushLocalDataToFirestore(user.email);
+        if (ok) {
+          set({ lastSyncedAt: new Date().toISOString() });
+        }
+        return ok;
+      },
+
+      syncFromCloud: async () => {
+        const { user } = get();
+        if (!user) return false;
+        const ok = await pullLatestDataFromFirestore(user.email);
+        if (ok) {
+          set({ lastSyncedAt: new Date().toISOString() });
+        }
+        return ok;
+      },
+
+      isCloudConfigured: () => isFirebaseConfigured(),
     }),
     {
       name: 'pixel-pomodoro-auth',

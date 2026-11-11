@@ -179,8 +179,7 @@ export const useGoalStore = create<GoalState>()(
             const targetMins = goal.targetMinutes || 60;
             const targetSess = goal.targetSessions || 2;
             const completed =
-              nextMinutes >= targetMins ||
-              nextSessions >= targetSess;
+              nextMinutes >= targetMins || nextSessions >= targetSess;
 
             return {
               ...goal,

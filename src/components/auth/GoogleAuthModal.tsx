@@ -1,11 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone, Download, Key, Zap, QrCode, Copy, Check, HelpCircle } from 'lucide-react';
+import {
+  LogIn,
+  LogOut,
+  RefreshCw,
+  CheckCircle,
+  ShieldCheck,
+  Mail,
+  Sparkles,
+  AlertCircle,
+  Smartphone,
+  Download,
+  Key,
+  Zap,
+  QrCode,
+  Copy,
+  Check,
+  HelpCircle,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  Settings,
+} from 'lucide-react';
 import { useAuthStore, DEFAULT_GOOGLE_CLIENT_ID } from '../../store/useAuthStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { formatDatePretty } from '../../utils/formatters';
 import { generateSyncUrlAndQr, decodeSyncPayloadString, applySyncPayloadToLocalStorage } from '../../utils/syncManager';
+import {
+  saveFirebaseConfig,
+  clearFirebaseConfig,
+  isFirebaseConfigured,
+  pushLocalDataToFirestore,
+  pullLatestDataFromFirestore,
+} from '../../services/firebase';
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
@@ -78,6 +106,81 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [payloadCodeString, setPayloadCodeString] = useState('');
   const [pastedCode, setPastedCode] = useState('');
   const [isApplyingCode, setIsApplyingCode] = useState(false);
+
+  // Firebase Cloud Sync state
+  const [isCloudConfiguredState, setIsCloudConfiguredState] = useState(isFirebaseConfigured());
+  const [showFirebaseSetup, setShowFirebaseSetup] = useState(false);
+  const [firebaseConfigInput, setFirebaseConfigInput] = useState('');
+  const [isPushingCloud, setIsPushingCloud] = useState(false);
+  const [isPullingCloud, setIsPullingCloud] = useState(false);
+
+  useEffect(() => {
+    setIsCloudConfiguredState(isFirebaseConfigured());
+  }, [isOpen]);
+
+  const handlePushToCloud = async () => {
+    const email = user?.email || 'alvin1234putra@gmail.com';
+    setIsPushingCloud(true);
+    setSyncSuccessMsg('');
+    const ok = await pushLocalDataToFirestore(email);
+    setIsPushingCloud(false);
+    if (ok) {
+      setSyncSuccessMsg(`☁️ Seluruh data berhasil diunggah & aman di Firebase Cloud (${email})!`);
+    } else {
+      setSyncSuccessMsg('Gagal mengunggah ke Firebase. Pastikan aturan Firestore (security rules) mengizinkan tulis/write.');
+    }
+  };
+
+  const handlePullFromCloud = async () => {
+    const email = user?.email || 'alvin1234putra@gmail.com';
+    setIsPullingCloud(true);
+    setSyncSuccessMsg('');
+    const ok = await pullLatestDataFromFirestore(email);
+    setIsPullingCloud(false);
+    if (ok) {
+      setSyncSuccessMsg('🎉 Berhasil menarik data terbaru dari Firebase Cloud! Memuat ulang...');
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      setSyncSuccessMsg('Belum ada data cadangan di Firebase Cloud untuk email ini.');
+    }
+  };
+
+  const handleSaveFirebaseConfigJson = () => {
+    try {
+      let text = firebaseConfigInput.trim();
+      if (!text) return;
+      if (text.includes('{') && text.includes('}')) {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        text = text.substring(start, end + 1);
+        text = text.replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":').replace(/'/g, '"');
+        const parsed = JSON.parse(text);
+        if (parsed.apiKey && parsed.projectId) {
+          saveFirebaseConfig({
+            apiKey: parsed.apiKey,
+            projectId: parsed.projectId,
+            authDomain: parsed.authDomain || `${parsed.projectId}.firebaseapp.com`,
+            storageBucket: parsed.storageBucket || `${parsed.projectId}.appspot.com`,
+            messagingSenderId: parsed.messagingSenderId || '',
+            appId: parsed.appId || '',
+          });
+          setIsCloudConfiguredState(true);
+          setShowFirebaseSetup(false);
+          setSyncSuccessMsg('🎉 Firebase Cloud Database berhasil terhubung! Realtime sync aktif.');
+          return;
+        }
+      }
+      setSyncSuccessMsg('Format Firebase config tidak valid. Tempelkan objek { apiKey: "...", projectId: "..." }');
+    } catch {
+      setSyncSuccessMsg('Gagal memproses konfigurasi Firebase. Pastikan format JSON benar.');
+    }
+  };
+
+  const handleDisconnectFirebase = () => {
+    clearFirebaseConfig();
+    setIsCloudConfiguredState(false);
+    setSyncSuccessMsg('Firebase config telah dihapus.');
+  };
 
   // Pre-generate the sync link on modal open
   useEffect(() => {
@@ -355,6 +458,128 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     setSyncSuccessMsg('File cadangan berhasil di-download.');
   };
 
+  const renderFirebaseCloudSync = () => (
+    <div className="p-4 bg-[#0d1424] border-2 border-[#ff9900] space-y-3 shadow-[2px_2px_0px_#000]">
+      <div className="flex items-center justify-between gap-2 border-b border-[#22334f] pb-2">
+        <div className="flex items-center gap-2">
+          <Cloud size={16} className="text-[#ff9900]" />
+          <h4 className="font-silkscreen text-xs font-bold text-[#ff9900] uppercase">
+            Firebase Cloud Database (Auto-Sync Realtime)
+          </h4>
+        </div>
+        <span
+          className={`text-[9px] font-pixel px-1.5 py-0.5 border ${
+            isCloudConfiguredState
+              ? 'bg-[#00ff66]/20 text-[#00ff66] border-[#00ff66]'
+              : 'bg-[#ff9900]/20 text-[#ff9900] border-[#ff9900]'
+          }`}
+        >
+          {isCloudConfiguredState ? 'AKTIF ✓' : 'SETUP'}
+        </span>
+      </div>
+
+      {isCloudConfiguredState ? (
+        <div className="space-y-3">
+          <p className="text-[11px] text-[#b8cce6] leading-relaxed">
+            🟢 <strong>Firebase Cloud Database aktif!</strong> Setiap kali kamu menyelesaikan sesi pomodoro, data otomatis diunggah ke cloud dan langsung sinkron ke seluruh perangkatmu (Laptop & HP) secara *realtime*.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handlePushToCloud}
+              disabled={isPushingCloud}
+              className="py-2.5 px-3 bg-[#ff9900] hover:bg-[#ffaa22] active:bg-[#e68800] text-black font-silkscreen font-bold text-xs border border-black flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_#000]"
+            >
+              <CloudUpload size={14} className={isPushingCloud ? 'animate-bounce' : ''} />
+              <span>{isPushingCloud ? 'Mengunggah...' : 'Unggah ke Cloud'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePullFromCloud}
+              disabled={isPullingCloud}
+              className="py-2.5 px-3 bg-[#192a42] hover:bg-[#253d61] active:bg-[#121f31] text-[#ff9900] font-silkscreen font-bold text-xs border border-[#ff9900] flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <CloudDownload size={14} className={isPullingCloud ? 'animate-bounce' : ''} />
+              <span>{isPullingCloud ? 'Menarik...' : 'Ambil dari Cloud'}</span>
+            </button>
+          </div>
+
+          <div className="flex justify-between items-center pt-1 text-[10px] text-[#7186a2]">
+            <span>Akun cloud: {user?.email || 'alvin1234putra@gmail.com'}</span>
+            <button
+              type="button"
+              onClick={handleDisconnectFirebase}
+              className="text-[#ff5555] hover:underline cursor-pointer"
+            >
+              Putuskan Firebase
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          <p className="text-[11px] text-[#b4c8e2] leading-relaxed">
+            Hubungkan ke Firebase gratis agar <strong>Laptop & HP kamu otomatis sinkron sendiri</strong> tanpa perlu salin-salin link.
+          </p>
+
+          {!showFirebaseSetup ? (
+            <button
+              type="button"
+              onClick={() => setShowFirebaseSetup(true)}
+              className="w-full py-2 px-3 bg-[#1c2c44] hover:bg-[#283e60] text-[#ff9900] font-silkscreen font-bold text-xs border border-[#ff9900] flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Settings size={13} />
+              <span>Buka Form Konfigurasi Firebase</span>
+            </button>
+          ) : (
+            <div className="p-3 bg-[#080d17] border border-[#233754] space-y-2.5">
+              <div className="text-[10px] text-[#90a8c9] space-y-1 leading-relaxed">
+                <span className="font-bold text-[#ff9900] block">Cara mendapatkan Firebase Config (Gratis 2 Menit):</span>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Buka <strong>console.firebase.google.com</strong></li>
+                  <li>Pilih projectmu (atau buat baru, misal project <code className="text-[#00f0ff]">1069804020855</code>).</li>
+                  <li>Di menu <strong>Build → Firestore Database</strong>, klik <em>Create Database</em> (pilih Test Mode).</li>
+                  <li>Di <em>Project Settings</em> (ikon gir), pilih <strong>Web App (&lt;/&gt;)</strong>, lalu salin blok <code className="text-[#00f0ff]">const firebaseConfig = &#123; ... &#125;;</code></li>
+                </ol>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-[#ff9900] font-silkscreen mb-1">
+                  Tempelkan objek firebaseConfig di sini:
+                </label>
+                <textarea
+                  rows={4}
+                  value={firebaseConfigInput}
+                  onChange={(e) => setFirebaseConfigInput(e.target.value)}
+                  placeholder={`const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  projectId: "chronoquest",\n  ...\n};`}
+                  className="w-full bg-[#0a121e] border border-[#2f496e] p-2 text-[10px] font-mono text-[#00f0ff] outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFirebaseSetup(false)}
+                  className="px-2.5 py-1 text-[10px] text-[#869ab3] font-silkscreen hover:text-white"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFirebaseConfigJson}
+                  className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs border border-black cursor-pointer hover:bg-[#33ff85]"
+                >
+                  Simpan & Hubungkan Firebase
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   const renderCrossDeviceSync = () => (
     <div className="p-4 bg-[#101928] border-2 border-[#00f0ff] space-y-3.5 shadow-[2px_2px_0px_#000]">
       <div className="flex items-center justify-between gap-2 border-b border-[#1f304d] pb-2">
@@ -570,6 +795,9 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               </div>
             )}
 
+            {/* Firebase Cloud Sync (Real-time Multi-device Sync) */}
+            {renderFirebaseCloudSync()}
+
             {/* Cross-Device Sync (HP ⇄ Laptop) */}
             {renderCrossDeviceSync()}
 
@@ -709,6 +937,9 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 <span>{syncSuccessMsg}</span>
               </div>
             )}
+
+            {/* Firebase Cloud Sync (Real-time Multi-device Sync) */}
+            {renderFirebaseCloudSync()}
 
             {/* Cross-Device Sync (HP ⇄ Laptop) */}
             {renderCrossDeviceSync()}

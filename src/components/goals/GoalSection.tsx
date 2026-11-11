@@ -1,17 +1,33 @@
-import React, { useState } from 'react';
-import { Plus, CheckCircle, Clock, Trash2, Award, Target, Zap } from 'lucide-react';
-import { useGoalStore } from '../../store/useGoalStore';
-import { useTimerStore } from '../../store/useTimerStore';
-import type { GoalPeriod, Goal } from '../../types/goal';
-import { PixelButton } from '../ui/PixelButton';
-import { PixelProgress } from '../ui/PixelProgress';
-import { AddGoalModal } from './AddGoalModal';
-import { formatMinutes } from '../../utils/formatters';
+import {
+    Award,
+    CheckCircle,
+    Clock,
+    Plus,
+    Target,
+    Trash2,
+    Zap,
+} from "lucide-react";
+import React, { useState } from "react";
+import { useGoalStore } from "../../store/useGoalStore";
+import { useTimerStore } from "../../store/useTimerStore";
+import type { Goal, GoalPeriod } from "../../types/goal";
+import { formatMinutes } from "../../utils/formatters";
+import { PixelButton } from "../ui/PixelButton";
+import { PixelProgress } from "../ui/PixelProgress";
+import { AddGoalModal } from "./AddGoalModal";
 
 export const GoalSection: React.FC = () => {
-  const { goals, identities, activeGoalId, setActiveGoalId, toggleGoalComplete, deleteGoal } = useGoalStore();
-  const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
-  const [selectedPeriod, setSelectedPeriod] = useState<GoalPeriod>('daily');
+  const {
+    goals,
+    identities,
+    activeGoalId,
+    setActiveGoalId,
+    toggleGoalComplete,
+    deleteGoal,
+  } = useGoalStore();
+  const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } =
+    useTimerStore();
+  const [selectedPeriod, setSelectedPeriod] = useState<GoalPeriod>("daily");
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const filteredGoals = goals.filter((g) => g.period === selectedPeriod);
@@ -29,22 +45,30 @@ export const GoalSection: React.FC = () => {
       {/* Header & Tabs */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b-2 border-[#2b2545]">
         <div className="flex items-center gap-2">
-          {(['daily', 'monthly', 'annually'] as const).map((period) => (
+          {(["daily", "monthly", "annually"] as const).map((period) => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
               className={`px-3.5 py-1.5 font-silkscreen text-xs uppercase cursor-pointer border-2 transition-all ${
                 selectedPeriod === period
-                  ? 'bg-[#00f0ff] text-black border-black shadow-[2px_2px_0px_#000]'
-                  : 'bg-[#151224] text-[#9f97ba] border-[#2f274a] hover:text-white'
+                  ? "bg-[#00f0ff] text-black border-black shadow-[2px_2px_0px_#000]"
+                  : "bg-[#151224] text-[#9f97ba] border-[#2f274a] hover:text-white"
               }`}
             >
-              {period === 'daily' ? '📅 Harian' : period === 'monthly' ? '🌙 Bulanan' : '🌟 Tahunan'}
+              {period === "daily"
+                ? "📅 Harian"
+                : period === "monthly"
+                  ? "🌙 Bulanan"
+                  : "🌟 Tahunan"}
             </button>
           ))}
         </div>
 
-        <PixelButton variant="primary" size="sm" onClick={() => setIsAddOpen(true)}>
+        <PixelButton
+          variant="primary"
+          size="sm"
+          onClick={() => setIsAddOpen(true)}
+        >
           <Plus size={14} />
           <span>Tambah Target</span>
         </PixelButton>
@@ -64,22 +88,32 @@ export const GoalSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredGoals.map((goal) => {
             const identity = getIdentity(goal.identityId);
-            const isDaily = goal.period === 'daily';
-            const isCompleted = goal.completed || (isDaily && goal.targetMinutes > 0 && goal.currentMinutes >= goal.targetMinutes);
+            const isDaily = goal.period === "daily";
+            const isCompleted =
+              goal.completed ||
+              (isDaily &&
+                goal.targetMinutes > 0 &&
+                goal.currentMinutes >= goal.targetMinutes);
             const isActive = isDaily && goal.id === activeGoalId;
-            const percent = isDaily && goal.targetMinutes > 0
-              ? Math.min(100, Math.round((goal.currentMinutes / goal.targetMinutes) * 100))
-              : 0;
+            const percent =
+              isDaily && goal.targetMinutes > 0
+                ? Math.min(
+                    100,
+                    Math.round(
+                      (goal.currentMinutes / goal.targetMinutes) * 100,
+                    ),
+                  )
+                : 0;
 
             return (
               <div
                 key={goal.id}
                 className={`p-4 border-2 flex flex-col justify-between transition-all ${
                   isActive
-                    ? 'bg-[#0f2129] border-[#00f0ff] shadow-[0_0_12px_rgba(0,240,255,0.25)]'
+                    ? "bg-[#0f2129] border-[#00f0ff] shadow-[0_0_12px_rgba(0,240,255,0.25)]"
                     : isCompleted
-                    ? 'bg-[#16241c] border-[#00ff66] shadow-[2px_2px_0px_#000]'
-                    : 'bg-[#181528] border-[#362f54] hover:border-[#4f4476]'
+                      ? "bg-[#16241c] border-[#00ff66] shadow-[2px_2px_0px_#000]"
+                      : "bg-[#181528] border-[#362f54] hover:border-[#4f4476]"
                 }`}
               >
                 <div>
@@ -113,7 +147,9 @@ export const GoalSection: React.FC = () => {
 
                       <h4
                         className={`font-silkscreen text-xs font-bold leading-snug ${
-                          isCompleted ? 'line-through text-[#9f97ba]' : 'text-[#f0edf6]'
+                          isCompleted
+                            ? "line-through text-[#9f97ba]"
+                            : "text-[#f0edf6]"
                         }`}
                       >
                         {goal.title}
@@ -125,10 +161,14 @@ export const GoalSection: React.FC = () => {
                         onClick={() => toggleGoalComplete(goal.id)}
                         className={`p-1 border cursor-pointer transition-all ${
                           isCompleted
-                            ? 'bg-[#00ff66] text-black border-black'
-                            : 'bg-[#0f0d1a] text-[#71688d] border-[#3b335c] hover:border-[#00ff66]'
+                            ? "bg-[#00ff66] text-black border-black"
+                            : "bg-[#0f0d1a] text-[#71688d] border-[#3b335c] hover:border-[#00ff66]"
                         }`}
-                        title={isCompleted ? 'Tandai belum selesai' : 'Tandai selesai'}
+                        title={
+                          isCompleted
+                            ? "Tandai belum selesai"
+                            : "Tandai selesai"
+                        }
                       >
                         <CheckCircle size={15} />
                       </button>
@@ -153,22 +193,31 @@ export const GoalSection: React.FC = () => {
                     <div className="space-y-1.5 mt-3">
                       <div className="flex justify-between items-center text-xs font-silkscreen text-[#b5aecd]">
                         <span className="flex items-center gap-1">
-                          <Clock size={12} className="text-[#00f0ff]" />
-                          {formatMinutes(goal.currentMinutes)} / {formatMinutes(goal.targetMinutes)}
+                          <Clock
+                            size={12}
+                            className="text-[#00f0ff]"
+                          />
+                          {formatMinutes(goal.currentMinutes)} /{" "}
+                          {formatMinutes(goal.targetMinutes)}
                         </span>
-                        <span className="text-[#ffd700] font-pixel text-[11px]">{percent}%</span>
+                        <span className="text-[#ffd700] font-pixel text-[11px]">
+                          {percent}%
+                        </span>
                       </div>
 
                       <PixelProgress
                         value={goal.currentMinutes}
                         max={goal.targetMinutes}
                         size="sm"
-                        variant={isActive ? 'neon' : isCompleted ? 'success' : 'xp'}
+                        variant={
+                          isActive ? "neon" : isCompleted ? "success" : "xp"
+                        }
                       />
 
                       <div className="flex justify-between items-center text-[11px] font-silkscreen text-[#7d759b] pt-1">
                         <span>
-                          Sesi: {goal.currentSessions} / {goal.targetSessions} sesi
+                          Sesi: {goal.currentSessions} / {goal.targetSessions}{" "}
+                          sesi
                         </span>
                         {isCompleted && (
                           <span className="text-[#00ff66] font-pixel text-[10px] flex items-center gap-1">
@@ -181,14 +230,15 @@ export const GoalSection: React.FC = () => {
                     <div className="mt-3 p-2.5 bg-[#120f20] border border-[#2b2545] flex items-center justify-between">
                       <div>
                         <span className="text-[10px] font-pixel text-[#8d84aa] uppercase block">
-                          STATUS MILESTONE {goal.period === 'monthly' ? 'BULANAN' : 'TAHUNAN'}:
+                          STATUS MILESTONE{" "}
+                          {goal.period === "monthly" ? "BULANAN" : "TAHUNAN"}:
                         </span>
                         <span
                           className={`text-xs font-silkscreen font-bold ${
-                            isCompleted ? 'text-[#00ff66]' : 'text-[#ffd700]'
+                            isCompleted ? "text-[#00ff66]" : "text-[#ffd700]"
                           }`}
                         >
-                          {isCompleted ? '✓ TERCAPAI' : 'DALAM PERJALANAN'}
+                          {isCompleted ? "✓ TERCAPAI" : "DALAM PERJALANAN"}
                         </span>
                       </div>
                       <span className="text-[11px] font-silkscreen text-[#786e97] italic">
@@ -222,12 +272,16 @@ export const GoalSection: React.FC = () => {
                       onClick={() => toggleGoalComplete(goal.id)}
                       className={`w-full py-1.5 px-2 text-xs font-silkscreen font-bold border cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
                         isCompleted
-                          ? 'bg-[#00ff66] text-black border-black'
-                          : 'bg-[#1c1830] hover:bg-[#282245] text-[#ffd700] border-[#3f3562]'
+                          ? "bg-[#00ff66] text-black border-black"
+                          : "bg-[#1c1830] hover:bg-[#282245] text-[#ffd700] border-[#3f3562]"
                       }`}
                     >
                       <CheckCircle size={13} />
-                      <span>{isCompleted ? '✓ Milestone Tercapai' : 'Tandai Milestone Selesai'}</span>
+                      <span>
+                        {isCompleted
+                          ? "✓ Milestone Tercapai"
+                          : "Tandai Milestone Selesai"}
+                      </span>
                     </button>
                   )}
                 </div>

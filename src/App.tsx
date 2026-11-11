@@ -36,6 +36,11 @@ import { useAuthStore } from './store/useAuthStore';
 import { useGoalStore } from './store/useGoalStore';
 import { formatTime } from './utils/formatters';
 import { decodeSyncPayloadString, applySyncPayloadToLocalStorage } from './utils/syncManager';
+import {
+  subscribeToRealtimeSync,
+  applyCloudDataToLocalStorage,
+  isFirebaseConfigured,
+} from './services/firebase';
 import { Trophy, Sparkles } from 'lucide-react';
 
 export function App() {
@@ -109,6 +114,23 @@ export function App() {
         });
       }
     }
+  }, []);
+
+  // Realtime Firebase Cloud Sync Listener across Laptop & Mobile
+  useEffect(() => {
+    const user = useAuthStore.getState().user;
+    if (!user?.email || !isFirebaseConfigured()) return;
+
+    const unsubscribe = subscribeToRealtimeSync(user.email, (remoteData) => {
+      const ok = applyCloudDataToLocalStorage(remoteData);
+      if (ok) {
+        window.location.reload();
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // High precision timer interval ticker
