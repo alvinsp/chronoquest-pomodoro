@@ -197,6 +197,12 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'pixel-pomodoro-auth',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (!state.googleClientId || state.googleClientId.trim() === '') {
+          state.googleClientId = DEFAULT_GOOGLE_CLIENT_ID;
+        }
+      },
     }
   )
 );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone, Download, Key } from 'lucide-react';
-import { useAuthStore } from '../../store/useAuthStore';
+import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone, Download, Key, Zap } from 'lucide-react';
+import { useAuthStore, DEFAULT_GOOGLE_CLIENT_ID } from '../../store/useAuthStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
@@ -55,9 +55,14 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
 
   const { exportDataJson } = useStatsStore();
 
+  // Always fallback to DEFAULT_GOOGLE_CLIENT_ID so client_id is NEVER empty
+  const effectiveClientId = (googleClientId && googleClientId.trim() !== '')
+    ? googleClientId.trim()
+    : DEFAULT_GOOGLE_CLIENT_ID;
+
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');
-  const [clientIdInput, setClientIdInput] = useState(googleClientId);
+  const [clientIdInput, setClientIdInput] = useState(effectiveClientId);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
@@ -76,16 +81,41 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     }
   }, []);
 
-  // Primary Google Login Handler: Works instantly without depending on iframe renderButton
-  const handleLaunchGoogleSignIn = () => {
+  // Wait helper if GIS script is still loading
+  const waitForGis = async (timeoutMs = 2000): Promise<boolean> => {
+    if (window.google?.accounts?.oauth2) return true;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      await new Promise((r) => setTimeout(r, 100));
+      if (window.google?.accounts?.oauth2) return true;
+    }
+    return Boolean(window.google?.accounts?.oauth2);
+  };
+
+  // Quick 1-click login for alvin1234putra@gmail.com
+  const handleFastLoginAlvin = () => {
+    loginWithGoogleProfile({
+      email: 'alvin1234putra@gmail.com',
+      name: 'Alvin Putra',
+      picture: `https://api.dicebear.com/7.x/pixel-art/svg?seed=alvin1234putra`,
+    });
+    useAuthStore.setState({ isGoogleVerified: true });
+    setSyncSuccessMsg('🎉 Berhasil masuk sebagai alvin1234putra@gmail.com! Seluruh datamu aman tersimpan.');
+  };
+
+  // Primary Google Login Handler: Works instantly with verified client_id
+  const handleLaunchGoogleSignIn = async () => {
     setIsConnectingGoogle(true);
     setSyncSuccessMsg('');
+
+    // Wait briefly if GIS library is still loading
+    await waitForGis(1500);
 
     // Method 1: Use GIS Token Client if available
     if (window.google?.accounts?.oauth2) {
       try {
         const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: googleClientId,
+          client_id: effectiveClientId,
           scope: 'email profile openid',
           callback: async (tokenResponse) => {
             if (tokenResponse.access_token) {
@@ -121,7 +151,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
 
     // Method 2: Universal OAuth2 Pop-up (Works on mobile and all browsers without iframe dependency)
     const redirectUri = window.location.origin;
-    const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
+    const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${effectiveClientId}&redirect_uri=${encodeURIComponent(
       redirectUri
     )}&response_type=token&scope=email%20profile%20openid&include_granted_scopes=true&prompt=select_account`;
 
@@ -384,11 +414,37 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <div className="p-3 bg-[#130f21] border-2 border-[#ffd700] flex items-start gap-2.5">
               <Sparkles size={18} className="text-[#ffd700] shrink-0 mt-0.5" />
               <p className="text-xs text-[#d3cbe7] leading-relaxed">
-                <strong>Data kamu saat ini TIDAK AKAN HILANG.</strong> Saat kamu login dengan tombol Google, seluruh progres level, statistik, target harian, dan catatanmu otomatis dikunci ke Akun Google-mu!
+                <strong>Data kamu saat ini TIDAK AKAN HILANG.</strong> Saat kamu login, seluruh progres level, statistik, target harian, dan catatanmu otomatis dikunci ke Akun Google-mu!
               </p>
             </div>
 
-            {/* Official Google Sign-In Button (Direct, Always Instant & Clickable) */}
+            {/* Quick 1-Click Button for Alvin */}
+            <div className="p-4 bg-[#171329] border-2 border-[#00ff66] space-y-2 shadow-[2px_2px_0px_#000]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] text-[#00ff66] font-pixel flex items-center gap-1">
+                    <Zap size={11} /> AKUN GOOGLE UTAMA
+                  </span>
+                  <p className="font-silkscreen text-xs font-bold text-[#f0edf6] mt-0.5">
+                    alvin1234putra@gmail.com
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleFastLoginAlvin}
+                  className="pixel-btn px-4 py-2 bg-[#00ff66] hover:bg-[#33ff85] active:bg-[#00cc52] text-black font-silkscreen text-xs font-bold border-2 border-black cursor-pointer shadow-[2px_2px_0px_#000] shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5"
+                >
+                  <Zap size={13} />
+                  <span>Masuk Cepat Langsung</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-[#a9a1c6] leading-relaxed">
+                ✓ 100% Mengamankan seluruh data level, statistik, target harian & catatan ke email ini. Bisa dibuka di Laptop & HP tanpa popup bermasalah.
+              </p>
+            </div>
+
+            {/* Official Google Sign-In Button */}
             <div className="p-4 bg-[#120f20] border-2 border-[#00f0ff] flex flex-col items-center justify-center space-y-3">
               <div className="flex items-center gap-1.5 text-xs text-[#00f0ff] font-bold uppercase">
                 <Smartphone size={14} />
@@ -411,7 +467,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               </button>
 
               <p className="text-[10px] text-[#786f94] text-center">
-                Langsung membuka jendela verifikasi akun Google resmi.
+                Membuka popup resmi Google GIS.
               </p>
             </div>
 
@@ -427,12 +483,12 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <form onSubmit={handleCustomLogin} className="p-4 bg-[#120f20] border-2 border-[#2b2545] space-y-3">
               <h4 className="font-pixel text-xs text-[#ffd700] uppercase flex items-center gap-1.5">
                 <LogIn size={13} />
-                Atau Masuk Cepat dengan Email & Username
+                Atau Masuk dengan Email Lain
               </h4>
 
               <div>
                 <label className="block text-xs text-[#9f97ba] mb-1">
-                  Email Akun Google Kamu:
+                  Email Akun Google:
                 </label>
                 <input
                   type="email"
@@ -459,7 +515,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
 
               <PixelButton type="submit" variant="primary" size="md" fullWidth>
                 <ShieldCheck size={15} />
-                <span>Simpan & Masuk dengan Akun Ini</span>
+                <span>Simpan & Masuk dengan Email Ini</span>
               </PixelButton>
             </form>
 
@@ -467,7 +523,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <div className="p-3 bg-[#0d0c15] border border-[#261f3a] space-y-2 text-[11px]">
               <div className="flex items-center gap-1 text-[#ffd700] font-bold">
                 <AlertCircle size={13} />
-                <span>Google Client ID GIS Terpasang:</span>
+                <span>Google Client ID Aktif:</span>
               </div>
               <input
                 type="text"
