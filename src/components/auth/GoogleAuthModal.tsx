@@ -497,7 +497,19 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
           </div>
 
           <div className="flex justify-between items-center pt-1 text-[10px] text-[#7186a2]">
-            <span>Akun cloud: {user?.email || 'alvin1234putra@gmail.com'}</span>
+            <button
+              type="button"
+              onClick={() => {
+                const raw = localStorage.getItem('chronoquest_firebase_config');
+                if (raw) {
+                  navigator.clipboard.writeText(raw);
+                  setSyncSuccessMsg('✓ Konfigurasi Firebase disalin ke clipboard! Kirim ke WA/Telegram ke HP-mu.');
+                }
+              }}
+              className="text-[#00f0ff] hover:underline cursor-pointer flex items-center gap-1 text-[10px]"
+            >
+              <Copy size={11} /> Salin Config untuk HP
+            </button>
             <button
               type="button"
               onClick={handleDisconnectFirebase}
