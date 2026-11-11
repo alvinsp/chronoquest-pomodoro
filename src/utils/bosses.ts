@@ -50,3 +50,4 @@ export const DEFAULT_BOSSES: Boss[] = [
     description: 'Naga berkepala sembilan yang memecah konsentrasi menjadi serpihan tak bermakna.',
   },
 ];
+

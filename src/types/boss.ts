@@ -10,3 +10,4 @@ export interface Boss {
   defeated: boolean;
   description: string;
 }
+
