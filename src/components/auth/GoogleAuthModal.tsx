@@ -72,36 +72,67 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [showQrSync, setShowQrSync] = useState(false);
   const [qrImageUrl, setQrImageUrl] = useState('');
   const [syncUrl, setSyncUrl] = useState('');
-  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [isTooLargeForQr, setIsTooLargeForQr] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [payloadCodeString, setPayloadCodeString] = useState('');
   const [pastedCode, setPastedCode] = useState('');
   const [isApplyingCode, setIsApplyingCode] = useState(false);
 
-  const handleGenerateQr = async () => {
-    setIsGeneratingQr(true);
-    setSyncSuccessMsg('');
+  // Pre-generate the sync link on modal open
+  useEffect(() => {
+    if (!isOpen) return;
+    const email = user?.email || 'alvin1234putra@gmail.com';
+    generateSyncUrlAndQr(email)
+      .then((res) => {
+        setSyncUrl(res.syncUrl);
+        setPayloadCodeString(res.payloadCode);
+        if (res.qrDataUrl) {
+          setQrImageUrl(res.qrDataUrl);
+          setIsTooLargeForQr(false);
+        } else {
+          setIsTooLargeForQr(true);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to pregenerate sync url', err);
+      });
+  }, [isOpen, user?.email]);
+
+  const handleCopySyncLinkDirect = async () => {
     try {
-      const email = user?.email || 'alvin1234putra@gmail.com';
-      const result = await generateSyncUrlAndQr(email);
-      setQrImageUrl(result.qrDataUrl);
-      setSyncUrl(result.syncUrl);
-      setShowQrSync(true);
+      let targetUrl = syncUrl;
+      if (!targetUrl) {
+        const email = user?.email || 'alvin1234putra@gmail.com';
+        const res = await generateSyncUrlAndQr(email);
+        targetUrl = res.syncUrl;
+        setSyncUrl(res.syncUrl);
+        setPayloadCodeString(res.payloadCode);
+      }
+      await navigator.clipboard.writeText(targetUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+      setSyncSuccessMsg('🎉 Link berhasil disalin! Kirim via WA/Telegram ke HP-mu dan buka di browser HP.');
     } catch {
-      setSyncSuccessMsg('Gagal menghasilkan QR Code.');
-    } finally {
-      setIsGeneratingQr(false);
+      setSyncSuccessMsg('Salin teks link dari kotak di bawah.');
     }
   };
 
-  const handleCopySyncLink = async () => {
-    if (!syncUrl) return;
+  const handleCopyPayloadCode = async () => {
     try {
-      await navigator.clipboard.writeText(syncUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-      setSyncSuccessMsg('✓ Link Sinkronisasi disalin! Kirim via WA/Telegram ke HP-mu dan buka di browser HP.');
+      let code = payloadCodeString;
+      if (!code) {
+        const email = user?.email || 'alvin1234putra@gmail.com';
+        const res = await generateSyncUrlAndQr(email);
+        code = res.payloadCode;
+        setPayloadCodeString(res.payloadCode);
+      }
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 3000);
+      setSyncSuccessMsg('✓ Kode teks berhasil disalin!');
     } catch {
-      setSyncSuccessMsg('Silakan salin link secara manual.');
+      setSyncSuccessMsg('Silakan salin teks kode secara manual.');
     }
   };
 
@@ -325,16 +356,16 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   };
 
   const renderCrossDeviceSync = () => (
-    <div className="p-4 bg-[#101928] border-2 border-[#00f0ff] space-y-3 shadow-[2px_2px_0px_#000]">
+    <div className="p-4 bg-[#101928] border-2 border-[#00f0ff] space-y-3.5 shadow-[2px_2px_0px_#000]">
       <div className="flex items-center justify-between gap-2 border-b border-[#1f304d] pb-2">
         <div className="flex items-center gap-2">
           <Smartphone size={16} className="text-[#00f0ff]" />
           <h4 className="font-silkscreen text-xs font-bold text-[#00f0ff] uppercase">
-            Sinkronkan HP ⇄ Laptop (Scan QR & Link Cepat)
+            Sinkronkan HP ⇄ Laptop (Link & QR Instan)
           </h4>
         </div>
         <span className="text-[9px] font-pixel px-1.5 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]">
-          MULTI-DEVICE
+          SOLUSI MULTI-DEVICE
         </span>
       </div>
 
@@ -342,77 +373,120 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
       <div className="p-2.5 bg-[#0a121e] border border-[#1b2b46] flex items-start gap-2 text-[10px] text-[#9bb0cf] leading-relaxed">
         <HelpCircle size={14} className="text-[#00f0ff] shrink-0 mt-0.5" />
         <p>
-          <strong>Kenapa data di HP & Laptop berbeda?</strong> Memori browser (localStorage) Laptop dan HP berada di perangkat fisik yang berbeda. Gunakan QR Code atau Link di bawah ini untuk <strong>menyalin 100% progres (level, gold, target, catatan, dan statistik) dari Laptop ke HP</strong> dalam 3 detik!
+          <strong>Kenapa data di HP & Laptop berbeda?</strong> Memori browser (localStorage) Laptop dan HP berada di perangkat fisik yang berbeda. Gunakan tombol link atau scan QR di bawah ini untuk <strong>menyalin 100% progres (level, gold, target, catatan, dan statistik) dari Laptop ke HP</strong> dalam 3 detik!
         </p>
       </div>
 
-      {/* QR Code generator button or display */}
-      {!showQrSync ? (
+      {/* 1. ALWAYS VISIBLE PRIMARY ACTION: 1-CLICK COPY SYNC LINK */}
+      <div className="space-y-2 bg-[#09111c] p-3 border-2 border-[#00ff66]">
         <button
           type="button"
-          onClick={handleGenerateQr}
-          disabled={isGeneratingQr}
-          className="w-full py-2.5 px-3 bg-[#00f0ff] hover:bg-[#33f3ff] text-black font-silkscreen font-bold text-xs border-2 border-black cursor-pointer shadow-[2px_2px_0px_#000] flex items-center justify-center gap-2 transition-all"
+          onClick={handleCopySyncLinkDirect}
+          className="w-full py-3 px-4 bg-[#00ff66] hover:bg-[#33ff85] active:bg-[#00cc52] text-black font-silkscreen font-bold text-xs sm:text-sm border-2 border-black shadow-[3px_3px_0px_#000] flex items-center justify-center gap-2 cursor-pointer transition-all"
         >
-          <QrCode size={16} />
-          <span>{isGeneratingQr ? 'Menghasilkan QR...' : 'Tampilkan QR Code Sinkronisasi HP'}</span>
+          {copiedLink ? <Check size={16} /> : <Copy size={16} />}
+          <span>{copiedLink ? '✓ LINK TERSALIN KE CLIPBOARD!' : '📋 Salin Link Sinkronisasi HP (1-Klik)'}</span>
         </button>
-      ) : (
-        <div className="space-y-3 pt-1">
-          <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#0a121e] p-3 border border-[#1c2e4a]">
-            {/* QR Code Image */}
-            <div className="p-2 bg-white border-2 border-black shrink-0">
-              <img src={qrImageUrl} alt="QR Code Sinkronisasi" className="w-36 h-36" />
-            </div>
 
-            <div className="flex-1 space-y-2 text-center sm:text-left">
-              <span className="font-pixel text-[10px] text-[#00ff66] block">
-                ✓ QR CODE SIAP DI-SCAN:
-              </span>
-              <p className="text-[11px] text-[#d6e2f4] leading-relaxed">
-                Buka kamera di HP-mu, arahkan ke QR Code di samping. Halaman di HP akan otomatis menyalin seluruh level & target dari laptop!
-              </p>
-
-              <div className="pt-1 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopySyncLink}
-                  className="py-1.5 px-3 bg-[#1d2c44] hover:bg-[#283d5f] text-[#00f0ff] font-silkscreen text-xs font-bold border border-[#00f0ff] cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  {copiedLink ? <Check size={14} className="text-[#00ff66]" /> : <Copy size={14} />}
-                  <span>{copiedLink ? 'Link Tersalin!' : 'Salin Link Sinkronisasi'}</span>
-                </button>
-                <p className="text-[9px] text-[#768ba7]">
-                  Bisa kamu kirim ke WhatsApp / Telegram Web, lalu klik link tersebut di HP.
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* Text field showing the sync link directly */}
+        <div className="flex items-center gap-1.5 bg-[#0e1a2b] border border-[#233857] p-2">
+          <input
+            type="text"
+            readOnly
+            value={syncUrl}
+            placeholder="Membuat tautan sinkronisasi..."
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+            className="w-full bg-transparent text-[10px] text-[#00f0ff] font-mono outline-none cursor-pointer"
+          />
         </div>
-      )}
+        <p className="text-[10px] text-[#a9bed8] leading-tight">
+          💡 <strong>Cara pakai:</strong> Klik tombol hijau di atas, kirim link-nya ke WhatsApp / Telegram Web dirimu sendiri, lalu ketuk link itu di browser HP-mu.
+        </p>
+      </div>
 
-      {/* Paste code manual option */}
+      {/* 2. QR CODE SECTION */}
+      <div className="pt-2 border-t border-[#1e2f4a] space-y-2">
+        {!showQrSync ? (
+          <button
+            type="button"
+            onClick={() => setShowQrSync(true)}
+            className="w-full py-2 px-3 bg-[#17253a] hover:bg-[#233857] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] cursor-pointer flex items-center justify-center gap-2 transition-all"
+          >
+            <QrCode size={14} />
+            <span>Tampilkan QR Code untuk Scan Kamera HP</span>
+          </button>
+        ) : (
+          <div className="p-3 bg-[#0a121e] border border-[#1c2e4a] space-y-2">
+            {qrImageUrl && !isTooLargeForQr ? (
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="p-2 bg-white border-2 border-black shrink-0">
+                  <img src={qrImageUrl} alt="QR Code Sinkronisasi" className="w-36 h-36" />
+                </div>
+                <div className="space-y-1 text-center sm:text-left">
+                  <span className="font-pixel text-[10px] text-[#00ff66] block">
+                    ✓ QR CODE AKTIF:
+                  </span>
+                  <p className="text-[11px] text-[#d6e2f4] leading-relaxed">
+                    Arahkan kamera HP ke QR Code di samping. Seluruh progres akan langsung dimuat di HP.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-2.5 bg-[#26180a] border border-[#ffd700] text-[10px] text-[#ffd700]">
+                ⚠️ Data riwayat fokus kamu cukup panjang untuk sebuah QR Code fisik. Gunakan tombol hijau <strong>"Salin Link Sinkronisasi"</strong> di atas (100% didukung tanpa batas ukuran).
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 3. MANUAL CODE BACKUP & RESTORE */}
       <div className="pt-2 border-t border-[#1e2f4a]">
         <details className="text-[10px] text-[#869cb8]">
           <summary className="cursor-pointer text-[#00f0ff] hover:underline font-silkscreen">
-            Opsi Manual: Tempel Kode Sinkronisasi dari Perangkat Lain
+            Opsi Alternatif: Salin / Tempel Kode Teks Cadangan
           </summary>
-          <div className="mt-2 space-y-2">
-            <input
-              type="text"
-              value={pastedCode}
-              onChange={(e) => setPastedCode(e.target.value)}
-              placeholder="Tempel kode sinkronisasi (gz:H4sI...)..."
-              className="w-full bg-[#0a101b] border border-[#233857] p-1.5 text-[10px] text-[#00f0ff] font-mono outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleApplyPastedCode}
-              disabled={isApplyingCode || !pastedCode.trim()}
-              className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs border border-black cursor-pointer hover:bg-[#33ff85]"
-            >
-              {isApplyingCode ? 'Memproses...' : 'Terapkan Kode ke Perangkat Ini'}
-            </button>
+          <div className="mt-2.5 space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={payloadCodeString}
+                placeholder="Kode teks cadangan..."
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                className="w-full bg-[#0a101b] border border-[#233857] p-1.5 text-[10px] text-[#a9c2e0] font-mono outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleCopyPayloadCode}
+                className="px-2.5 py-1 bg-[#233857] hover:bg-[#324f7a] text-white font-silkscreen text-[10px] border border-black cursor-pointer shrink-0"
+              >
+                {copiedCode ? 'Tersalin!' : 'Salin Kode'}
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-[#19273c]">
+              <label className="block text-[10px] text-[#8aa0ba] mb-1">
+                Tempel Kode dari Perangkat Lain di sini:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={pastedCode}
+                  onChange={(e) => setPastedCode(e.target.value)}
+                  placeholder="Tempel kode sinkronisasi (gz:H4sI...)..."
+                  className="w-full bg-[#0a101b] border border-[#233857] p-1.5 text-[10px] text-[#00f0ff] font-mono outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPastedCode}
+                  disabled={isApplyingCode || !pastedCode.trim()}
+                  className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs border border-black cursor-pointer hover:bg-[#33ff85] shrink-0"
+                >
+                  {isApplyingCode ? 'Memproses...' : 'Terapkan'}
+                </button>
+              </div>
+            </div>
           </div>
         </details>
       </div>

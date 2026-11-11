@@ -151,20 +151,28 @@ export function applySyncPayloadToLocalStorage(payload: SyncPayload): boolean {
  */
 export async function generateSyncUrlAndQr(
   userEmail: string
-): Promise<{ syncUrl: string; qrDataUrl: string; payloadCode: string }> {
+): Promise<{ syncUrl: string; qrDataUrl: string; payloadCode: string; isTooLargeForQr: boolean }> {
   const payloadCode = await createSyncPayloadString(userEmail);
   const baseUrl = window.location.origin + window.location.pathname;
   const syncUrl = `${baseUrl}#sync=${encodeURIComponent(payloadCode)}`;
 
-  const qrDataUrl = await QRCode.toDataURL(syncUrl, {
-    width: 280,
-    margin: 2,
-    color: {
-      dark: '#000000',
-      light: '#ffffff',
-    },
-    errorCorrectionLevel: 'M',
-  });
+  let qrDataUrl = '';
+  let isTooLargeForQr = false;
 
-  return { syncUrl, qrDataUrl, payloadCode };
+  try {
+    qrDataUrl = await QRCode.toDataURL(syncUrl, {
+      width: 280,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+      errorCorrectionLevel: 'L',
+    });
+  } catch (err) {
+    console.warn('QR code generation error (payload too large):', err);
+    isTooLargeForQr = true;
+  }
+
+  return { syncUrl, qrDataUrl, payloadCode, isTooLargeForQr };
 }
