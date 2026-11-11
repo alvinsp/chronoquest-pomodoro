@@ -31,6 +31,7 @@ import { SessionHistory } from './components/stats/SessionHistory';
 import { useTimerStore } from './store/useTimerStore';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useGamifyStore } from './store/useGamifyStore';
+import { useAuthStore } from './store/useAuthStore';
 import { formatTime } from './utils/formatters';
 import { Trophy, Sparkles } from 'lucide-react';
 
@@ -53,6 +54,35 @@ export function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Google OAuth Access Token Listener (Handles direct redirects / popups)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get('access_token');
+      if (token) {
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then((profile) => {
+            if (profile.email) {
+              useAuthStore.getState().loginWithGoogleProfile({
+                email: profile.email,
+                name: profile.name || profile.email.split('@')[0],
+                picture: profile.picture,
+                id: profile.sub,
+              });
+              useAuthStore.setState({ isGoogleVerified: true });
+              window.history.replaceState(null, '', window.location.pathname);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
 
   // High precision timer interval ticker
   useEffect(() => {
