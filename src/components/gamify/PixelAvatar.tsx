@@ -3,7 +3,7 @@ import React from 'react';
 interface PixelAvatarProps {
   avatarId: string;
   isFocused?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export const PixelAvatar: React.FC<PixelAvatarProps> = ({
@@ -12,9 +12,10 @@ export const PixelAvatar: React.FC<PixelAvatarProps> = ({
   size = 'md',
 }) => {
   const sizeMap = {
-    sm: 'w-12 h-12',
+    sm: 'w-10 h-10',
     md: 'w-20 h-20',
     lg: 'w-28 h-28',
+    xl: 'w-36 h-36',
   }[size];
 
   // Render SVG 8-bit sprite representations
@@ -81,6 +82,67 @@ export const PixelAvatar: React.FC<PixelAvatarProps> = ({
           </svg>
         );
 
+      case 'avatar-alchemist':
+        return (
+          <svg viewBox="0 0 16 16" className="w-full h-full [image-rendering:pixelated]">
+            {/* Time Alchemist */}
+            <rect x="4" y="1" width="8" height="2" fill="#2d6a4f" />
+            <rect x="5" y="3" width="6" height="4" fill="#ffd166" />
+            {/* Monocle / Glass */}
+            <rect x="8" y="4" width="3" height="2" fill="#00f0ff" />
+            <rect x="5" y="5" width="2" height="1" fill="#111" />
+            {/* Coat */}
+            <rect x="3" y="7" width="10" height="6" fill="#1b4332" />
+            <rect x="6" y="8" width="4" height="5" fill="#40916c" />
+            {/* Potion Flask */}
+            <rect x="12" y="8" width="3" height="3" fill="#52b788" />
+            <rect x="13" y="7" width="1" height="1" fill="#ffd700" />
+            {/* Boots */}
+            <rect x="4" y="13" width="3" height="3" fill="#081c15" />
+            <rect x="9" y="13" width="3" height="3" fill="#081c15" />
+          </svg>
+        );
+
+      case 'avatar-valkyrie':
+        return (
+          <svg viewBox="0 0 16 16" className="w-full h-full [image-rendering:pixelated]">
+            {/* Pixel Valkyrie */}
+            <rect x="4" y="1" width="8" height="2" fill="#ffd700" />
+            {/* Winged Tiara */}
+            <rect x="2" y="2" width="2" height="3" fill="#fff" />
+            <rect x="12" y="2" width="2" height="3" fill="#fff" />
+            {/* Face & Blue Eyes */}
+            <rect x="5" y="3" width="6" height="4" fill="#ffd166" />
+            <rect x="6" y="4" width="1" height="1" fill="#00f0ff" />
+            <rect x="9" y="4" width="1" height="1" fill="#00f0ff" />
+            {/* Golden Radiant Armor */}
+            <rect x="4" y="7" width="8" height="6" fill="#ffd700" />
+            <rect x="6" y="8" width="4" height="4" fill="#fff" />
+            {/* Boots */}
+            <rect x="4" y="13" width="3" height="3" fill="#b08968" />
+            <rect x="9" y="13" width="3" height="3" fill="#b08968" />
+          </svg>
+        );
+
+      case 'avatar-mecha':
+        return (
+          <svg viewBox="0 0 16 16" className="w-full h-full [image-rendering:pixelated]">
+            {/* Android 01 / Cyborg */}
+            <rect x="4" y="1" width="8" height="5" fill="#48cae4" />
+            <rect x="3" y="3" width="1" height="2" fill="#ffd700" />
+            <rect x="12" y="3" width="1" height="2" fill="#ffd700" />
+            {/* Digital Visor */}
+            <rect x="5" y="3" width="6" height="2" fill="#03045e" />
+            <rect x="6" y="3" width="4" height="1" fill="#ff0055" />
+            {/* Metal Chassis */}
+            <rect x="3" y="6" width="10" height="7" fill="#0077b6" />
+            <rect x="6" y="8" width="4" height="4" fill="#90e0ef" />
+            {/* Thrusters */}
+            <rect x="4" y="13" width="3" height="3" fill="#023e8a" />
+            <rect x="9" y="13" width="3" height="3" fill="#023e8a" />
+          </svg>
+        );
+
       case 'avatar-mage':
       default:
         return (
@@ -124,4 +186,3 @@ export const PixelAvatar: React.FC<PixelAvatarProps> = ({
     </div>
   );
 };
-

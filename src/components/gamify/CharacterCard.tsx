@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coins, Award, ShoppingBag, Scroll } from 'lucide-react';
+import { Coins, Award, ShoppingBag, Scroll, Wand2 } from 'lucide-react';
 import { useGamifyStore } from '../../store/useGamifyStore';
 import { PixelAvatar } from './PixelAvatar';
 import { PixelPet } from './PixelPet';
@@ -11,6 +11,7 @@ interface CharacterCardProps {
   onOpenQuests: () => void;
   onOpenBadges: () => void;
   onOpenShop: () => void;
+  onOpenAvatarPicker?: () => void;
   isFocused?: boolean;
 }
 
@@ -18,6 +19,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   onOpenQuests,
   onOpenBadges,
   onOpenShop,
+  onOpenAvatarPicker,
   isFocused = false,
 }) => {
   const { hero, quests, badges } = useGamifyStore();
@@ -31,9 +33,18 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
       <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-[#ff0055]/10 rounded-full blur-2xl pointer-events-none" />
 
       <div className="flex flex-col sm:flex-row items-center gap-4">
-        {/* Avatar & Pet Display */}
-        <div className="flex items-end gap-2 shrink-0">
-          <PixelAvatar avatarId={hero.avatarId} isFocused={isFocused} size="md" />
+        {/* Avatar & Pet Display with Change Avatar shortcut */}
+        <div
+          className="flex items-end gap-2 shrink-0 cursor-pointer group"
+          onClick={onOpenAvatarPicker}
+          title="Klik untuk mengganti avatar & kustomisasi hero!"
+        >
+          <div className="relative">
+            <PixelAvatar avatarId={hero.avatarId} isFocused={isFocused} size="md" />
+            <div className="absolute -bottom-1 -right-1 p-1 bg-[#00f0ff] text-black border border-black shadow-[1px_1px_0px_#000] group-hover:scale-110 transition-transform">
+              <Wand2 size={11} />
+            </div>
+          </div>
           <PixelPet petId={hero.petId} isFocused={isFocused} />
         </div>
 
@@ -46,6 +57,15 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                   LVL {hero.level}
                 </span>
                 <h2 className="font-pixel text-sm text-[#f0edf6] truncate">{hero.name}</h2>
+                {onOpenAvatarPicker && (
+                  <button
+                    onClick={onOpenAvatarPicker}
+                    className="text-[10px] font-silkscreen text-[#00f0ff] hover:underline cursor-pointer flex items-center gap-0.5"
+                    title="Ganti Avatar"
+                  >
+                    [Ganti Avatar]
+                  </button>
+                )}
               </div>
               <p className="text-xs font-silkscreen text-[#00f0ff] mt-0.5">{hero.title}</p>
             </div>

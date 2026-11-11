@@ -5,15 +5,22 @@ import { CharacterCard } from './components/gamify/CharacterCard';
 import { DailyQuestsModal } from './components/gamify/DailyQuests';
 import { AchievementsModal } from './components/gamify/AchievementsModal';
 import { PixelShopModal } from './components/gamify/PixelShop';
+import { AvatarSelectorModal } from './components/gamify/AvatarSelectorModal';
+import { BossBattleCard } from './components/gamify/BossBattleCard';
 import { SettingsModal } from './components/settings/SettingsModal';
 
 import { PresetSelector } from './components/timer/PresetSelector';
 import { TimerDisplay } from './components/timer/TimerDisplay';
 import { TimerControls } from './components/timer/TimerControls';
 import { ActiveTaskCard } from './components/timer/ActiveTaskCard';
+import { DailyFocusTargetCard } from './components/timer/DailyFocusTargetCard';
+import { ZenFocusMode } from './components/timer/ZenFocusMode';
+
+import { FocusNotesCard } from './components/notes/FocusNotesCard';
 
 import { IdentityManager } from './components/goals/IdentityManager';
 import { GoalSection } from './components/goals/GoalSection';
+import { AddGoalModal } from './components/goals/AddGoalModal';
 
 import { StatsOverview } from './components/stats/StatsOverview';
 import { HeatmapGrid } from './components/stats/HeatmapGrid';
@@ -31,7 +38,10 @@ export function App() {
   const [isQuestsOpen, setIsQuestsOpen] = useState(false);
   const [isBadgesOpen, setIsBadgesOpen] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isZenOpen, setIsZenOpen] = useState(false);
+  const [isAddDailyGoalOpen, setIsAddDailyGoalOpen] = useState(false);
 
   const { status, mode, timeRemaining, tick } = useTimerStore();
   const { theme, crtScanlines } = useSettingsStore();
@@ -61,6 +71,23 @@ export function App() {
       document.title = 'ChronoQuest — 8-Bit Gamified Pomodoro';
     }
   }, [timeRemaining, status, mode]);
+
+  // Keyboard shortcut listener
+  useEffect(() => {
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setIsZenOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKey);
+    return () => window.removeEventListener('keydown', handleGlobalKey);
+  }, []);
 
   const unclaimedQuestsCount = quests.filter((q) => q.completed && !q.claimed).length;
 
@@ -104,6 +131,7 @@ export function App() {
           onOpenQuests={() => setIsQuestsOpen(true)}
           onOpenBadges={() => setIsBadgesOpen(true)}
           onOpenShop={() => setIsShopOpen(true)}
+          onOpenAvatarPicker={() => setIsAvatarModalOpen(true)}
           isFocused={status === 'running' && mode === 'focus'}
         />
 
@@ -114,9 +142,18 @@ export function App() {
 
             <TimerDisplay />
 
-            <TimerControls />
+            <TimerControls onOpenZenMode={() => setIsZenOpen(true)} />
 
             <ActiveTaskCard />
+
+            {/* Target Harian langsung di halaman Fokus Timer */}
+            <DailyFocusTargetCard onOpenAddGoal={() => setIsAddDailyGoalOpen(true)} />
+
+            {/* RPG Boss Dungeon Battle encounter */}
+            <BossBattleCard isFocused={status === 'running' && mode === 'focus'} />
+
+            {/* Catatan Bebas / Focus Scratchpad langsung di halaman Timer */}
+            <FocusNotesCard />
           </div>
         )}
 
@@ -237,7 +274,14 @@ export function App() {
       <DailyQuestsModal isOpen={isQuestsOpen} onClose={() => setIsQuestsOpen(false)} />
       <AchievementsModal isOpen={isBadgesOpen} onClose={() => setIsBadgesOpen(false)} />
       <PixelShopModal isOpen={isShopOpen} onClose={() => setIsShopOpen(false)} />
+      <AvatarSelectorModal isOpen={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <ZenFocusMode isOpen={isZenOpen} onClose={() => setIsZenOpen(false)} />
+      <AddGoalModal
+        isOpen={isAddDailyGoalOpen}
+        onClose={() => setIsAddDailyGoalOpen(false)}
+        defaultPeriod="daily"
+      />
     </div>
   );
 }

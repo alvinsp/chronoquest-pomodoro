@@ -1,11 +1,15 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, SkipForward, Volume2, VolumeX, Headphones } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Volume2, VolumeX, Headphones, Maximize2 } from 'lucide-react';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { PixelButton } from '../ui/PixelButton';
 import type { AmbientSoundType } from '../../audio/ambientNoise';
 
-export const TimerControls: React.FC = () => {
+interface TimerControlsProps {
+  onOpenZenMode?: () => void;
+}
+
+export const TimerControls: React.FC<TimerControlsProps> = ({ onOpenZenMode }) => {
   const { status, startTimer, pauseTimer, resetTimer, skipSession } = useTimerStore();
   const { isMuted, toggleMute, ambientType, setAmbientType } = useSettingsStore();
 
@@ -60,6 +64,18 @@ export const TimerControls: React.FC = () => {
 
       {/* Secondary Audio & Atmosphere Controls */}
       <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-silkscreen text-[#9f97ba]">
+        {/* Zen Mode Button */}
+        {onOpenZenMode && (
+          <button
+            onClick={onOpenZenMode}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1e1736] border-2 border-[#3b335c] text-[#ffd700] hover:border-[#ffd700] cursor-pointer transition-all"
+            title="Masuk ke Zen Theater Mode layar penuh"
+          >
+            <Maximize2 size={13} />
+            <span>Zen Theater (F)</span>
+          </button>
+        )}
+
         {/* Mute button */}
         <button
           onClick={toggleMute}
@@ -93,3 +109,4 @@ export const TimerControls: React.FC = () => {
     </div>
   );
 };
+

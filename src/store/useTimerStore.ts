@@ -211,8 +211,9 @@ export const useTimerStore = create<TimerState>()(
           // 2. Record in goals
           useGoalStore.getState().recordSessionProgress(activeIdentityId, durationMinutes);
 
-          // 3. Add XP & Gold to Gamify hero
+          // 3. Add XP & Gold to Gamify hero and attack current Boss
           useGamifyStore.getState().addXpAndGold(xp, gold);
+          useGamifyStore.getState().damageActiveBoss(durationMinutes);
 
           // 4. Update quests
           const todayMins = useStatsStore.getState().getTodayMinutes();

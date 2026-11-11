@@ -25,6 +25,8 @@ interface GamifyState {
   buyShopItem: (itemId: string) => boolean;
   equipShopItem: (itemId: string) => void;
   damageActiveBoss: (damage: number) => { bossDefeated: boolean; bossName: string; lootGold: number; lootXp: number };
+  updateHeroProfile: (updates: Partial<UserHero>) => void;
+  setAvatarId: (avatarId: string) => void;
   clearLevelUpAlert: () => void;
   clearBossAlert: () => void;
   restoreDailyVitals: () => void;
@@ -281,6 +283,20 @@ export const useGamifyStore = create<GamifyState>()(
 
       clearLevelUpAlert: () => set({ recentLevelUp: false }),
       clearBossAlert: () => set({ recentBossDefeat: null }),
+
+      updateHeroProfile: (updates) => {
+        soundFx.playCoin();
+        set((state) => ({
+          hero: { ...state.hero, ...updates },
+        }));
+      },
+
+      setAvatarId: (avatarId) => {
+        soundFx.playCoin();
+        set((state) => ({
+          hero: { ...state.hero, avatarId },
+        }));
+      },
 
       restoreDailyVitals: () => {
         set((state) => ({

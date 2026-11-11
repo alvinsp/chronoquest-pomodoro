@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { SessionRecord, DayFocusStat, IdentityStat } from '../types/stats';
-import { getTodayDateString } from '../utils/formatters';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { DayFocusStat, IdentityStat, SessionRecord } from "../types/stats";
+import { getTodayDateString } from "../utils/formatters";
 
 interface StatsState {
   sessions: SessionRecord[];
@@ -9,7 +9,9 @@ interface StatsState {
   longestStreak: number;
   lastActiveDate: string;
 
-  recordSession: (session: Omit<SessionRecord, 'id' | 'timestamp' | 'dateStr'>) => SessionRecord;
+  recordSession: (
+    session: Omit<SessionRecord, "id" | "timestamp" | "dateStr">,
+  ) => SessionRecord;
   getTodayMinutes: () => number;
   getTodaySessionsCount: () => number;
   getTotalMinutes: () => number;
@@ -25,40 +27,42 @@ export const useStatsStore = create<StatsState>()(
       sessions: [
         // Seed initial history so user immediately sees rich stats & heatmap
         {
-          id: 'seed-1',
+          id: "seed-1",
           timestamp: Date.now() - 86400000 * 2,
-          dateStr: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0],
+          dateStr: new Date(Date.now() - 86400000 * 2)
+            .toISOString()
+            .split("T")[0],
           durationMinutes: 50,
-          mode: 'focus',
-          presetId: 'deep50',
-          identityId: 'id-dev',
-          taskTitle: 'Refactor Core Architecture & Design System',
+          mode: "focus",
+          presetId: "deep50",
+          identityId: "id-dev",
+          taskTitle: "Refactor Core Architecture & Design System",
           xpEarned: 130,
           goldEarned: 52,
           completed: true,
         },
         {
-          id: 'seed-2',
+          id: "seed-2",
           timestamp: Date.now() - 86400000,
-          dateStr: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+          dateStr: new Date(Date.now() - 86400000).toISOString().split("T")[0],
           durationMinutes: 25,
-          mode: 'focus',
-          presetId: 'classic',
-          identityId: 'id-author',
-          taskTitle: 'Draft Technical Essay on Flow State',
+          mode: "focus",
+          presetId: "classic",
+          identityId: "id-author",
+          taskTitle: "Draft Technical Essay on Flow State",
           xpEarned: 50,
           goldEarned: 20,
           completed: true,
         },
         {
-          id: 'seed-3',
+          id: "seed-3",
           timestamp: Date.now() - 86400000,
-          dateStr: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+          dateStr: new Date(Date.now() - 86400000).toISOString().split("T")[0],
           durationMinutes: 40,
-          mode: 'focus',
-          presetId: 'flow40',
-          identityId: 'id-dev',
-          taskTitle: 'Implement Web Audio Synthesizer Engine',
+          mode: "focus",
+          presetId: "flow40",
+          identityId: "id-dev",
+          taskTitle: "Implement Web Audio Synthesizer Engine",
           xpEarned: 92,
           goldEarned: 36,
           completed: true,
@@ -66,14 +70,16 @@ export const useStatsStore = create<StatsState>()(
       ],
       currentStreak: 2,
       longestStreak: 5,
-      lastActiveDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+      lastActiveDate: new Date(Date.now() - 86400000)
+        .toISOString()
+        .split("T")[0],
 
       recordSession: (sessionData) => {
         const todayStr = getTodayDateString();
         const now = Date.now();
         const newRecord: SessionRecord = {
           ...sessionData,
-          id: 'sess-' + now,
+          id: "sess-" + now,
           timestamp: now,
           dateStr: todayStr,
         };
@@ -85,11 +91,11 @@ export const useStatsStore = create<StatsState>()(
         if (lastDate !== todayStr) {
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          const yesterdayStr = yesterday.toISOString().split("T")[0];
 
           if (lastDate === yesterdayStr) {
             nextStreak += 1;
-          } else if (lastDate === '') {
+          } else if (lastDate === "") {
             nextStreak = 1;
           } else {
             nextStreak = 1; // broken streak
@@ -113,31 +119,34 @@ export const useStatsStore = create<StatsState>()(
       getTodayMinutes: () => {
         const todayStr = getTodayDateString();
         return get()
-          .sessions.filter((s) => s.dateStr === todayStr && s.mode === 'focus')
+          .sessions.filter((s) => s.dateStr === todayStr && s.mode === "focus")
           .reduce((acc, curr) => acc + curr.durationMinutes, 0);
       },
 
       getTodaySessionsCount: () => {
         const todayStr = getTodayDateString();
-        return get().sessions.filter((s) => s.dateStr === todayStr && s.mode === 'focus').length;
+        return get().sessions.filter(
+          (s) => s.dateStr === todayStr && s.mode === "focus",
+        ).length;
       },
 
       getTotalMinutes: () => {
         return get()
-          .sessions.filter((s) => s.mode === 'focus')
+          .sessions.filter((s) => s.mode === "focus")
           .reduce((acc, curr) => acc + curr.durationMinutes, 0);
       },
 
       getHeatmapData: (daysCount = 60) => {
-        const sessions = get().sessions.filter((s) => s.mode === 'focus');
-        const dayMap: Record<string, { minutes: number; sessions: number }> = {};
+        const sessions = get().sessions.filter((s) => s.mode === "focus");
+        const dayMap: Record<string, { minutes: number; sessions: number }> =
+          {};
 
         // Prepare past N days
         const result: DayFocusStat[] = [];
         for (let i = daysCount - 1; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          const dStr = d.toISOString().split('T')[0];
+          const dStr = d.toISOString().split("T")[0];
           dayMap[dStr] = { minutes: 0, sessions: 0 };
         }
 
@@ -170,12 +179,17 @@ export const useStatsStore = create<StatsState>()(
       },
 
       getIdentityStats: (identityIds) => {
-        const focusSessions = get().sessions.filter((s) => s.mode === 'focus');
-        const totalMinutes = focusSessions.reduce((acc, curr) => acc + curr.durationMinutes, 0) || 1;
+        const focusSessions = get().sessions.filter((s) => s.mode === "focus");
+        const totalMinutes =
+          focusSessions.reduce((acc, curr) => acc + curr.durationMinutes, 0) ||
+          1;
 
         return identityIds.map((id) => {
           const matching = focusSessions.filter((s) => s.identityId === id);
-          const mins = matching.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+          const mins = matching.reduce(
+            (acc, curr) => acc + curr.durationMinutes,
+            0,
+          );
           return {
             identityId: id,
             totalMinutes: mins,
@@ -215,7 +229,7 @@ export const useStatsStore = create<StatsState>()(
       },
     }),
     {
-      name: 'pixel-pomodoro-stats',
-    }
-  )
+      name: "pixel-pomodoro-stats",
+    },
+  ),
 );
