@@ -34,6 +34,10 @@ interface GoalState {
     durationMinutes: number,
     specificGoalId?: string,
   ) => void;
+
+  // Day-change auto refresh & manual refresh
+  checkAndRolloverDailyGoals: () => void;
+  resetDailyGoalsToToday: () => void;
 }
 
 export const useGoalStore = create<GoalState>()(
@@ -152,31 +156,18 @@ export const useGoalStore = create<GoalState>()(
 
       recordSessionProgress: (identityId, durationMinutes, specificGoalId) => {
         const todayStr = getTodayDateString();
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
 
         set((state) => ({
           goals: state.goals.map((goal) => {
-            let isRelevant = false;
+            // ONLY track minutes & sessions on DAILY goals!
+            // Monthly and annually goals are high-level milestone visions and don't count time.
+            if (goal.period !== "daily") return goal;
 
-            // If a specific active goal was targeted, advance it directly!
+            let isRelevant = false;
             if (specificGoalId && goal.id === specificGoalId) {
               isRelevant = true;
             } else if (goal.identityId === identityId) {
-              if (
-                goal.period === "daily" &&
-                (!goal.date || goal.date === todayStr)
-              ) {
-                isRelevant = true;
-              } else if (
-                goal.period === "monthly" &&
-                (!goal.month || goal.month === currentMonth)
-              ) {
-                isRelevant = true;
-              } else if (
-                goal.period === "annually" &&
-                (!goal.year || goal.year === currentYear)
-              ) {
+              if (!goal.date || goal.date === todayStr) {
                 isRelevant = true;
               }
             }
@@ -185,16 +176,65 @@ export const useGoalStore = create<GoalState>()(
 
             const nextMinutes = goal.currentMinutes + durationMinutes;
             const nextSessions = goal.currentSessions + 1;
+            const targetMins = goal.targetMinutes || 60;
+            const targetSess = goal.targetSessions || 2;
             const completed =
-              nextMinutes >= goal.targetMinutes ||
-              nextSessions >= goal.targetSessions;
+              nextMinutes >= targetMins ||
+              nextSessions >= targetSess;
 
             return {
               ...goal,
+              date: todayStr,
               currentMinutes: nextMinutes,
               currentSessions: nextSessions,
               completed: completed || goal.completed,
             };
+          }),
+        }));
+      },
+
+      checkAndRolloverDailyGoals: () => {
+        const todayStr = getTodayDateString();
+        const { goals } = get();
+
+        let changed = false;
+        const updatedGoals = goals.map((goal) => {
+          if (goal.period === "daily") {
+            // If goal date is missing or older than today, refresh it for the new day!
+            if (!goal.date || goal.date !== todayStr) {
+              changed = true;
+              return {
+                ...goal,
+                currentMinutes: 0,
+                currentSessions: 0,
+                completed: false,
+                date: todayStr,
+              };
+            }
+          }
+          return goal;
+        });
+
+        if (changed) {
+          set({ goals: updatedGoals });
+        }
+      },
+
+      resetDailyGoalsToToday: () => {
+        soundFx.playClick();
+        const todayStr = getTodayDateString();
+        set((state) => ({
+          goals: state.goals.map((g) => {
+            if (g.period === "daily") {
+              return {
+                ...g,
+                currentMinutes: 0,
+                currentSessions: 0,
+                completed: false,
+                date: todayStr,
+              };
+            }
+            return g;
           }),
         }));
       },
@@ -203,6 +243,9 @@ export const useGoalStore = create<GoalState>()(
       name: "pixel-pomodoro-goals",
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        // Auto-refresh daily goals when day changes!
+        state.checkAndRolloverDailyGoals();
+
         if (!state.activeGoalId && state.goals.length > 0) {
           const firstDaily = state.goals.find(
             (g) => g.period === "daily" && !g.completed,

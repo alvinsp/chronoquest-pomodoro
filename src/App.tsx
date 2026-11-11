@@ -33,6 +33,7 @@ import { useTimerStore } from './store/useTimerStore';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useGamifyStore } from './store/useGamifyStore';
 import { useAuthStore } from './store/useAuthStore';
+import { useGoalStore } from './store/useGoalStore';
 import { formatTime } from './utils/formatters';
 import { decodeSyncPayloadString, applySyncPayloadToLocalStorage } from './utils/syncManager';
 import { Trophy, Sparkles } from 'lucide-react';
@@ -120,11 +121,15 @@ export function App() {
   }, [tick]);
 
   // Mobile Phone Wake-up & Tab Focus Listener:
-  // When mobile phone screen unlocks or user returns to tab, immediately sync timer
+  // When mobile phone screen unlocks or user returns to tab, immediately sync timer and check day rollover
   useEffect(() => {
+    // Check rollover on mount
+    useGoalStore.getState().checkAndRolloverDailyGoals();
+
     const handleWakeUp = () => {
       if (document.visibilityState === 'visible') {
         tick();
+        useGoalStore.getState().checkAndRolloverDailyGoals();
       }
     };
 

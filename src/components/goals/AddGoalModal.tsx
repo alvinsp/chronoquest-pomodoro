@@ -34,14 +34,15 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
     const todayStr = getTodayDateString();
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
+    const isDaily = form.period === 'daily';
 
     addGoal({
       title: form.title.trim(),
       period: form.period,
       identityId: form.identityId || (identities[0]?.id ?? 'default'),
-      targetMinutes: form.targetMinutes,
-      targetSessions: form.targetSessions,
-      date: form.period === 'daily' ? todayStr : undefined,
+      targetMinutes: isDaily ? form.targetMinutes : 0,
+      targetSessions: isDaily ? form.targetSessions : 0,
+      date: isDaily ? todayStr : undefined,
       month: form.period === 'monthly' ? currentMonth : undefined,
       year: form.period === 'annually' || form.period === 'monthly' ? currentYear : undefined,
       notes: form.notes.trim() || undefined,
@@ -114,38 +115,49 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">
-              Target (Menit):
-            </label>
-            <input
-              type="number"
-              min={1}
-              required
-              value={form.targetMinutes}
-              onChange={(e) =>
-                setForm({ ...form, targetMinutes: parseInt(e.target.value) || 1 })
-              }
-              className="w-full bg-[#0d0c15] border-2 border-[#3b335c] p-2 text-sm text-[#ffd700] font-pixel focus:border-[#ffd700] outline-none"
-            />
+        {form.period === 'daily' ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">
+                Target (Menit):
+              </label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={form.targetMinutes}
+                onChange={(e) =>
+                  setForm({ ...form, targetMinutes: parseInt(e.target.value) || 1 })
+                }
+                className="w-full bg-[#0d0c15] border-2 border-[#3b335c] p-2 text-sm text-[#ffd700] font-pixel focus:border-[#ffd700] outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">
+                Target (Sesi):
+              </label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={form.targetSessions}
+                onChange={(e) =>
+                  setForm({ ...form, targetSessions: parseInt(e.target.value) || 1 })
+                }
+                className="w-full bg-[#0d0c15] border-2 border-[#3b335c] p-2 text-sm text-[#ffd700] font-pixel focus:border-[#ffd700] outline-none"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">
-              Target (Sesi):
-            </label>
-            <input
-              type="number"
-              min={1}
-              required
-              value={form.targetSessions}
-              onChange={(e) =>
-                setForm({ ...form, targetSessions: parseInt(e.target.value) || 1 })
-              }
-              className="w-full bg-[#0d0c15] border-2 border-[#3b335c] p-2 text-sm text-[#ffd700] font-pixel focus:border-[#ffd700] outline-none"
-            />
+        ) : (
+          <div className="p-3 bg-[#110e1f] border-2 border-[#2f274c] space-y-1.5 text-xs font-silkscreen">
+            <div className="text-[#ffd700] font-bold flex items-center gap-1.5">
+              <span>🎯 Milestone {form.period === 'monthly' ? 'Bulanan' : 'Tahunan'}</span>
+            </div>
+            <p className="text-[11px] text-[#8e85aa] leading-relaxed">
+              Target {form.period === 'monthly' ? 'bulanan' : 'tahunan'} adalah sasaran besar (milestone) tanpa batasan menit kaku. Alokasi waktu fokus akan kamu tentukan harian di <strong>Target Harian (Daily Quests)</strong>.
+            </p>
           </div>
-        </div>
+        )}
 
         <div>
           <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Target, CheckCircle, Clock, Flame, Plus, Award, Zap, Star } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Target, CheckCircle, Clock, Flame, Plus, Award, Zap, Star, RotateCcw } from 'lucide-react';
 import { useGoalStore } from '../../store/useGoalStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useTimerStore } from '../../store/useTimerStore';
@@ -12,9 +12,22 @@ interface DailyFocusTargetCardProps {
 }
 
 export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOpenAddGoal }) => {
-  const { goals, identities, activeGoalId, setActiveGoalId, toggleGoalComplete } = useGoalStore();
+  const {
+    goals,
+    identities,
+    activeGoalId,
+    setActiveGoalId,
+    toggleGoalComplete,
+    checkAndRolloverDailyGoals,
+    resetDailyGoalsToToday,
+  } = useGoalStore();
   const { getTodayMinutes, getTodaySessionsCount, currentStreak } = useStatsStore();
   const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
+
+  // Auto-refresh daily goals when day changes
+  useEffect(() => {
+    checkAndRolloverDailyGoals();
+  }, [checkAndRolloverDailyGoals]);
 
   const todayMinutes = getTodayMinutes();
   const todaySessions = getTodaySessionsCount();
@@ -23,8 +36,8 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
   const activeGoal = goals.find((g) => g.id === activeGoalId);
 
   // Overall aggregate daily target
-  const aggregateTargetMinutes = dailyGoals.reduce((acc, g) => acc + g.targetMinutes, 0) || 100;
-  const aggregateTargetSessions = dailyGoals.reduce((acc, g) => acc + g.targetSessions, 0) || 4;
+  const aggregateTargetMinutes = dailyGoals.reduce((acc, g) => acc + (g.targetMinutes || 0), 0) || 100;
+  const aggregateTargetSessions = dailyGoals.reduce((acc, g) => acc + (g.targetSessions || 0), 0) || 4;
 
   const overallPercent = Math.min(100, Math.round((todayMinutes / aggregateTargetMinutes) * 100));
   const isGoalReached = todayMinutes >= aggregateTargetMinutes && aggregateTargetMinutes > 0;
@@ -53,11 +66,20 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 px-2.5 py-1 bg-[#261520] border border-[#ff0055] text-xs font-silkscreen text-[#ff0055]">
             <Flame size={13} className="animate-pulse" />
             <span>Streak {currentStreak} Hari</span>
           </div>
+
+          <button
+            type="button"
+            onClick={resetDailyGoalsToToday}
+            className="text-xs font-silkscreen px-2 py-1 bg-[#1c1830] text-[#9bb0cf] border border-[#3b325c] hover:border-[#00f0ff] hover:text-[#00f0ff] cursor-pointer flex items-center gap-1 transition-all"
+            title="Segarkan target fokus untuk hari baru (reset jam harian ke 0)"
+          >
+            <RotateCcw size={11} /> Refresh Hari Baru
+          </button>
 
           {onOpenAddGoal && (
             <button

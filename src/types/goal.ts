@@ -15,9 +15,9 @@ export interface Goal {
   identityId: string;
   title: string;
   period: GoalPeriod;
-  targetMinutes: number;
+  targetMinutes: number;   // 0 for monthly/annually milestone goals
   currentMinutes: number;
-  targetSessions: number;
+  targetSessions: number;  // 0 for monthly/annually milestone goals
   currentSessions: number;
   year?: number;          // For annually goals, e.g. 2026
   month?: number;         // For monthly goals, e.g. 11

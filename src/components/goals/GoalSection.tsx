@@ -64,9 +64,12 @@ export const GoalSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredGoals.map((goal) => {
             const identity = getIdentity(goal.identityId);
-            const isCompleted = goal.completed || goal.currentMinutes >= goal.targetMinutes;
-            const isActive = goal.id === activeGoalId;
-            const percent = Math.min(100, Math.round((goal.currentMinutes / goal.targetMinutes) * 100));
+            const isDaily = goal.period === 'daily';
+            const isCompleted = goal.completed || (isDaily && goal.targetMinutes > 0 && goal.currentMinutes >= goal.targetMinutes);
+            const isActive = isDaily && goal.id === activeGoalId;
+            const percent = isDaily && goal.targetMinutes > 0
+              ? Math.min(100, Math.round((goal.currentMinutes / goal.targetMinutes) * 100))
+              : 0;
 
             return (
               <div
@@ -145,51 +148,86 @@ export const GoalSection: React.FC = () => {
                     </p>
                   )}
 
-                  {/* Progress info */}
-                  <div className="space-y-1.5 mt-3">
-                    <div className="flex justify-between items-center text-xs font-silkscreen text-[#b5aecd]">
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} className="text-[#00f0ff]" />
-                        {formatMinutes(goal.currentMinutes)} / {formatMinutes(goal.targetMinutes)}
-                      </span>
-                      <span className="text-[#ffd700] font-pixel text-[11px]">{percent}%</span>
-                    </div>
-
-                    <PixelProgress
-                      value={goal.currentMinutes}
-                      max={goal.targetMinutes}
-                      size="sm"
-                      variant={isActive ? 'neon' : isCompleted ? 'success' : 'xp'}
-                    />
-
-                    <div className="flex justify-between items-center text-[11px] font-silkscreen text-[#7d759b] pt-1">
-                      <span>
-                        Sesi: {goal.currentSessions} / {goal.targetSessions} sesi
-                      </span>
-                      {isCompleted && (
-                        <span className="text-[#00ff66] font-pixel text-[10px] flex items-center gap-1">
-                          <Award size={11} /> TARGET TERCAPAI!
+                  {/* Progress info for Daily goals vs Milestone info for Monthly/Annual */}
+                  {isDaily ? (
+                    <div className="space-y-1.5 mt-3">
+                      <div className="flex justify-between items-center text-xs font-silkscreen text-[#b5aecd]">
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} className="text-[#00f0ff]" />
+                          {formatMinutes(goal.currentMinutes)} / {formatMinutes(goal.targetMinutes)}
                         </span>
-                      )}
+                        <span className="text-[#ffd700] font-pixel text-[11px]">{percent}%</span>
+                      </div>
+
+                      <PixelProgress
+                        value={goal.currentMinutes}
+                        max={goal.targetMinutes}
+                        size="sm"
+                        variant={isActive ? 'neon' : isCompleted ? 'success' : 'xp'}
+                      />
+
+                      <div className="flex justify-between items-center text-[11px] font-silkscreen text-[#7d759b] pt-1">
+                        <span>
+                          Sesi: {goal.currentSessions} / {goal.targetSessions} sesi
+                        </span>
+                        {isCompleted && (
+                          <span className="text-[#00ff66] font-pixel text-[10px] flex items-center gap-1">
+                            <Award size={11} /> TARGET TERCAPAI!
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mt-3 p-2.5 bg-[#120f20] border border-[#2b2545] flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-pixel text-[#8d84aa] uppercase block">
+                          STATUS MILESTONE {goal.period === 'monthly' ? 'BULANAN' : 'TAHUNAN'}:
+                        </span>
+                        <span
+                          className={`text-xs font-silkscreen font-bold ${
+                            isCompleted ? 'text-[#00ff66]' : 'text-[#ffd700]'
+                          }`}
+                        >
+                          {isCompleted ? '✓ TERCAPAI' : 'DALAM PERJALANAN'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-silkscreen text-[#786e97] italic">
+                        Dipecah di Target Harian
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Card Action: Set Active Button */}
+                {/* Card Action */}
                 <div className="pt-2">
-                  {isActive ? (
-                    <div className="py-1.5 px-2 bg-[#00f0ff]/10 border border-[#00f0ff] text-[#00f0ff] text-[11px] font-silkscreen flex items-center justify-center gap-1.5">
-                      <Zap size={12} />
-                      <span>⭐ Terhubung Langsung ke Timer & Log Sesi</span>
-                    </div>
+                  {isDaily ? (
+                    isActive ? (
+                      <div className="py-1.5 px-2 bg-[#00f0ff]/10 border border-[#00f0ff] text-[#00f0ff] text-[11px] font-silkscreen flex items-center justify-center gap-1.5">
+                        <Zap size={12} />
+                        <span>⭐ Terhubung Langsung ke Timer & Log Sesi</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleActivateGoal(goal)}
+                        className="w-full py-1.5 px-2 bg-[#1b1730] hover:bg-[#282146] text-[#00f0ff] border border-[#3b335c] hover:border-[#00f0ff] text-[11px] font-silkscreen cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Target size={12} />
+                        <span>Jadikan Target Aktif Timer</span>
+                      </button>
+                    )
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleActivateGoal(goal)}
-                      className="w-full py-1.5 px-2 bg-[#1b1730] hover:bg-[#282146] text-[#00f0ff] border border-[#3b335c] hover:border-[#00f0ff] text-[11px] font-silkscreen cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                      onClick={() => toggleGoalComplete(goal.id)}
+                      className={`w-full py-1.5 px-2 text-xs font-silkscreen font-bold border cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                        isCompleted
+                          ? 'bg-[#00ff66] text-black border-black'
+                          : 'bg-[#1c1830] hover:bg-[#282245] text-[#ffd700] border-[#3f3562]'
+                      }`}
                     >
-                      <Target size={12} />
-                      <span>Jadikan Target Aktif Timer</span>
+                      <CheckCircle size={13} />
+                      <span>{isCompleted ? '✓ Milestone Tercapai' : 'Tandai Milestone Selesai'}</span>
                     </button>
                   )}
                 </div>

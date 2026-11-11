@@ -60,16 +60,16 @@ export const DEFAULT_GOALS: Goal[] = [
     completed: false,
     createdAt: new Date().toISOString(),
   },
-  // Monthly goals
+  // Monthly goals (Milestones)
   {
     id: 'goal-monthly-dev',
     identityId: 'id-dev',
-    title: 'Kumpulkan 50 Jam Deep Coding Proyek Utama',
+    title: 'Rilis Arsitektur Microservices MVP v1.0',
     period: 'monthly',
-    targetMinutes: 3000, // 50 hours
-    currentMinutes: 480,  // initial simulated progress
-    targetSessions: 60,
-    currentSessions: 10,
+    targetMinutes: 0,
+    currentMinutes: 0,
+    targetSessions: 0,
+    currentSessions: 0,
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     completed: false,
@@ -78,44 +78,44 @@ export const DEFAULT_GOALS: Goal[] = [
   {
     id: 'goal-monthly-learn',
     identityId: 'id-polymath',
-    title: 'Eksplorasi Algoritma & Teori Sistem Terdistribusi',
+    title: 'Kuasai Materi TOEFL ITP & Bedah Soal Grammar',
     period: 'monthly',
-    targetMinutes: 1200, // 20 hours
-    currentMinutes: 360,
-    targetSessions: 24,
-    currentSessions: 7,
+    targetMinutes: 0,
+    currentMinutes: 0,
+    targetSessions: 0,
+    currentSessions: 0,
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     completed: false,
     createdAt: new Date().toISOString(),
   },
-  // Annual goals
+  // Annual goals (Milestones & Visions)
   {
     id: 'goal-annual-identity',
     identityId: 'id-dev',
-    title: 'Capai 600 Jam Total Deep Work Arsitektur & AI',
+    title: 'Capai Sertifikasi & Portofolio Arsitektur Sistem Skala Besar',
     period: 'annually',
-    targetMinutes: 36000, // 600 hours
-    currentMinutes: 4500, // ongoing
-    targetSessions: 720,
-    currentSessions: 92,
+    targetMinutes: 0,
+    currentMinutes: 0,
+    targetSessions: 0,
+    currentSessions: 0,
     year: new Date().getFullYear(),
     completed: false,
-    notes: 'Visi 2026: Menjadi Fullstack Architect kaliber dunia dengan portofolio sistem produksi berskala besar.',
+    notes: 'Visi: Menjadi Fullstack Architect kaliber dunia dengan portofolio sistem produksi berskala besar.',
     createdAt: new Date().toISOString(),
   },
   {
     id: 'goal-annual-writing',
     identityId: 'id-author',
-    title: 'Terbitkan Buku / 20 Artikel Analisis Teknologi Mendalam',
+    title: 'Terbitkan Buku / 20 Karya Tulis & Esai Inspiratif',
     period: 'annually',
-    targetMinutes: 12000, // 200 hours
-    currentMinutes: 1800,
-    targetSessions: 240,
-    currentSessions: 36,
+    targetMinutes: 0,
+    currentMinutes: 0,
+    targetSessions: 0,
+    currentSessions: 0,
     year: new Date().getFullYear(),
     completed: false,
-    notes: 'Kekuatan identitas sebagai komunikator teknologi terpercaya.',
+    notes: 'Kekuatan identitas sebagai komunikator teknologi dan pemikir mandiri.',
     createdAt: new Date().toISOString(),
   },
 ];
