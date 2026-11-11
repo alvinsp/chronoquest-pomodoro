@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone } from 'lucide-react';
+import { LogIn, LogOut, RefreshCw, CheckCircle, ShieldCheck, Mail, Sparkles, AlertCircle, Smartphone, Download, Key } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useStatsStore } from '../../store/useStatsStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { formatDatePretty } from '../../utils/formatters';
@@ -45,6 +46,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     googleClientId,
     lastSyncedAt,
     isAutoSyncEnabled,
+    isGoogleVerified,
     loginWithGoogleCredential,
     loginWithGoogleProfile,
     logout,
@@ -54,6 +56,8 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     toggleAutoSync,
   } = useAuthStore();
 
+  const { exportDataJson } = useStatsStore();
+
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');
   const [clientIdInput, setClientIdInput] = useState(googleClientId);
@@ -61,6 +65,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [gisLoaded, setGisLoaded] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const googleLinkBtnRef = useRef<HTMLDivElement>(null);
 
   // Initialize official Google Identity Services button with mobile readiness & retry
   useEffect(() => {
@@ -69,37 +74,50 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
-      if (window.google?.accounts?.id && googleBtnRef.current) {
+      if (window.google?.accounts?.id) {
         clearInterval(interval);
         setGisLoaded(true);
+
+        const onCredentialResponse = (response: { credential: string }) => {
+          const success = loginWithGoogleCredential(response.credential);
+          if (success) {
+            setSyncSuccessMsg('🎉 Berhasil! Seluruh data kamu telah ditautkan ke Akun Google resmi.');
+          }
+        };
 
         try {
           window.google.accounts.id.initialize({
             client_id: googleClientId,
-            callback: (response) => {
-              const success = loginWithGoogleCredential(response.credential);
-              if (success) {
-                setSyncSuccessMsg('Berhasil login dengan Google!');
-              }
-            },
+            callback: onCredentialResponse,
             auto_select: false,
             cancel_on_tap_outside: true,
           });
 
-          googleBtnRef.current.innerHTML = '';
           const btnWidth = Math.min(280, window.innerWidth - 60);
 
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'filled_black',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            width: btnWidth,
-            logo_alignment: 'left',
-          });
+          if (googleBtnRef.current) {
+            googleBtnRef.current.innerHTML = '';
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: 'filled_black',
+              size: 'large',
+              text: 'signin_with',
+              shape: 'rectangular',
+              width: btnWidth,
+              logo_alignment: 'left',
+            });
+          }
 
-          // Trigger One Tap if appropriate on mobile
-          window.google.accounts.id.prompt();
+          if (googleLinkBtnRef.current) {
+            googleLinkBtnRef.current.innerHTML = '';
+            window.google.accounts.id.renderButton(googleLinkBtnRef.current, {
+              theme: 'filled_black',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'rectangular',
+              width: btnWidth,
+              logo_alignment: 'left',
+            });
+          }
         } catch {
           // GIS rendering fallback
         }
@@ -111,7 +129,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isOpen, googleClientId, loginWithGoogleCredential]);
+  }, [isOpen, googleClientId, loginWithGoogleCredential, user, isGoogleVerified]);
 
   const handleCustomLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +141,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
       picture: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(inputEmail.trim())}`,
     });
 
-    setSyncSuccessMsg(`Data akun tersinkronisasi ke: ${inputEmail}`);
+    setSyncSuccessMsg(`Data saat ini berhasil diikat ke profil: ${inputEmail}`);
   };
 
   const handleManualSync = () => {
@@ -131,7 +149,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     saveAccountData();
     setTimeout(() => {
       setIsSyncing(false);
-      setSyncSuccessMsg('Data berhasil disimpan ke profil Google Akun!');
+      setSyncSuccessMsg('Data lokal saat ini berhasil disimpan ke profil Akun Google!');
     }, 400);
   };
 
@@ -147,6 +165,18 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         setSyncSuccessMsg('Belum ada data cadangan tersimpan untuk akun ini.');
       }
     }, 400);
+  };
+
+  const handleDownloadBackup = () => {
+    const jsonStr = exportDataJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-pomodoro-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setSyncSuccessMsg('File cadangan berhasil di-download.');
   };
 
   return (
@@ -168,8 +198,14 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="font-pixel text-xs text-[#00ff66] truncate">{user.name}</h4>
-                  <span className="text-[9px] font-pixel px-1.5 py-0.2 bg-[#052e16] text-[#00ff66] border border-[#00ff66]">
-                    TERHUBUNG
+                  <span
+                    className={`text-[9px] font-pixel px-1.5 py-0.5 border ${
+                      isGoogleVerified
+                        ? 'bg-[#052e16] text-[#00ff66] border-[#00ff66]'
+                        : 'bg-[#332205] text-[#ffd700] border-[#ffd700]'
+                    }`}
+                  >
+                    {isGoogleVerified ? 'GOOGLE VERIFIED ✓' : 'EMAIL PROFILE'}
                   </span>
                 </div>
                 <p className="text-xs text-[#a097bd] truncate mt-0.5">{user.email}</p>
@@ -179,6 +215,32 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 </p>
               </div>
             </div>
+
+            {/* If user logged in via email only, provide one-click Upgrade to Google GIS button */}
+            {!isGoogleVerified && (
+              <div className="p-3.5 bg-[#171329] border-2 border-[#ffd700] space-y-2">
+                <div className="flex items-start gap-2">
+                  <Key size={16} className="text-[#ffd700] shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-bold text-[#ffd700] text-xs">
+                      Tautkan ke Akun Google Resmi (Client ID GIS)
+                    </h5>
+                    <p className="text-[11px] text-[#d3cbe7] mt-0.5 leading-relaxed">
+                      Kamu sebelumnya masuk via email. Klik tombol di bawah untuk menautkannya ke Akun Google resmi. <strong>Data level, EXP, koin, dan targetmu yang sekarang tidak akan hilang!</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center pt-2">
+                  <div ref={googleLinkBtnRef} className="min-h-[44px]" />
+                  {!gisLoaded && (
+                    <span className="text-[10px] text-[#8e85aa] animate-pulse mt-1">
+                      Menyiapkan tombol Google...
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Sync Alert Message */}
             {syncSuccessMsg && (
@@ -207,16 +269,15 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 </button>
               </div>
 
-              <div className="pt-2 border-t border-[#261f3e] flex gap-2">
+              <div className="pt-2 border-t border-[#261f3e] grid grid-cols-2 gap-2">
                 <PixelButton
                   variant="primary"
                   size="sm"
                   onClick={handleManualSync}
                   disabled={isSyncing}
-                  className="flex-1"
                 >
                   <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                  <span>Simpan ke Akun Ini</span>
+                  <span>Kunci & Simpan Data Saat Ini</span>
                 </PixelButton>
 
                 <PixelButton
@@ -224,17 +285,30 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                   size="sm"
                   onClick={handleManualRestore}
                   disabled={isSyncing}
-                  className="flex-1"
                 >
-                  <span>Pulihkan Data Akun</span>
+                  <span>Muat Ulang Data Akun</span>
                 </PixelButton>
               </div>
+            </div>
+
+            {/* Safety Backup Download Button */}
+            <div className="p-2.5 bg-[#0d0c15] border border-[#2b2447] flex items-center justify-between">
+              <span className="text-[10px] text-[#9f97ba]">
+                Ingin punya salinan file cadangan mandiri?
+              </span>
+              <button
+                type="button"
+                onClick={handleDownloadBackup}
+                className="text-[10px] font-silkscreen text-[#00f0ff] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Download size={12} /> Download Backup JSON
+              </button>
             </div>
 
             {/* Logout button */}
             <div className="pt-2 flex justify-between items-center border-t border-[#2b2545]">
               <span className="text-[10px] text-[#71688d]">
-                Data tersimpan khusus untuk akun {user.email}.
+                Data aman tersimpan untuk: {user.email}
               </span>
               <PixelButton variant="danger" size="sm" onClick={logout}>
                 <LogOut size={13} />
@@ -248,7 +322,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <div className="p-3 bg-[#130f21] border-2 border-[#ffd700] flex items-start gap-2.5">
               <Sparkles size={18} className="text-[#ffd700] shrink-0 mt-0.5" />
               <p className="text-xs text-[#d3cbe7] leading-relaxed">
-                Hubungkan Akun Google agar progres level hero, lencana, target harian, dan catatan fokus tersinkronisasi mulus di komputer maupun HP mobile milikmu!
+                <strong>Data kamu yang ada sekarang TIDAK AKAN HILANG.</strong> Saat kamu login menggunakan tombol Google, seluruh progres level, statistik, target harian, dan catatanmu saat ini akan otomatis tersimpan dan terikat ke Akun Google-mu!
               </p>
             </div>
 
@@ -256,7 +330,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <div className="p-4 bg-[#120f20] border-2 border-[#00f0ff] flex flex-col items-center justify-center space-y-3">
               <div className="flex items-center gap-1.5 text-xs text-[#00f0ff] font-bold uppercase">
                 <Smartphone size={14} />
-                <span>Login Cepat Google (HP & Desktop)</span>
+                <span>Login Resmi Google (Client ID Aktif)</span>
               </div>
 
               <div ref={googleBtnRef} className="min-h-[44px] flex items-center justify-center w-full" />
@@ -266,13 +340,17 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                   Memuat tombol resmi Google...
                 </div>
               )}
+
+              <p className="text-[10px] text-[#786f94] text-center">
+                Mendukung login di laptop/PC maupun HP mobile.
+              </p>
             </div>
 
             {/* Fast Google Login by Email Form */}
             <form onSubmit={handleCustomLogin} className="p-4 bg-[#120f20] border-2 border-[#2b2545] space-y-3">
               <h4 className="font-pixel text-xs text-[#ffd700] uppercase flex items-center gap-1.5">
                 <LogIn size={13} />
-                Atau Masuk dengan Email Google
+                Atau Masuk Cepat dengan Email & Username
               </h4>
 
               <div>
@@ -291,7 +369,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
 
               <div>
                 <label className="block text-xs text-[#9f97ba] mb-1">
-                  Nama Panggilan / Display Name:
+                  Nama Panggilan / Username:
                 </label>
                 <input
                   type="text"
@@ -312,7 +390,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             <div className="p-3 bg-[#0d0c15] border border-[#261f3a] space-y-2 text-[11px]">
               <div className="flex items-center gap-1 text-[#ffd700] font-bold">
                 <AlertCircle size={13} />
-                <span>Google Client ID Aktif:</span>
+                <span>Google Client ID GIS Terpasang:</span>
               </div>
               <input
                 type="text"
@@ -322,7 +400,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 className="w-full bg-[#151224] border border-[#3b335c] p-1.5 text-[10px] text-[#00f0ff] outline-none font-mono"
               />
               <div className="flex justify-between items-center text-[10px] text-[#71688d]">
-                <span>Siap digunakan di mobile & desktop</span>
+                <span>Siap untuk Desktop & HP Mobile</span>
                 <button
                   type="button"
                   onClick={() => {

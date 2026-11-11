@@ -11,6 +11,7 @@ interface AuthState {
   googleClientId: string;
   lastSyncedAt: string | null;
   isAutoSyncEnabled: boolean;
+  isGoogleVerified: boolean; // true if logged in via official Google GIS JWT
 
   loginWithGoogleCredential: (credentialJwt: string) => boolean;
   loginWithGoogleProfile: (profile: { email: string; name: string; picture?: string; id?: string }) => void;
@@ -21,6 +22,7 @@ interface AuthState {
   // Cloud / Account Data Storage
   saveAccountData: () => void;
   loadAccountData: () => boolean;
+  bindCurrentDataToEmail: (email: string) => void;
 }
 
 // Decode standard base64 Google JWT payload
@@ -49,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
         DEFAULT_GOOGLE_CLIENT_ID,
       lastSyncedAt: null,
       isAutoSyncEnabled: true,
+      isGoogleVerified: false,
 
       loginWithGoogleCredential: (credentialJwt: string) => {
         const payload = decodeJwt(credentialJwt);
@@ -64,19 +67,17 @@ export const useAuthStore = create<AuthState>()(
 
         soundFx.playLevelUp();
         confetti({
-          particleCount: 70,
-          spread: 60,
+          particleCount: 75,
+          spread: 70,
           origin: { y: 0.6 },
           colors: ['#4285F4', '#EA4335', '#FBBC05', '#34A853'],
         });
 
-        set({ user: googleUser });
+        set({ user: googleUser, isGoogleVerified: true });
 
-        // Auto-load previous account data or save current data to account
-        const loaded = get().loadAccountData();
-        if (!loaded) {
-          get().saveAccountData();
-        }
+        // Save current active data directly into this Google Account key!
+        // This guarantees NO DATA IS LOST from previous email/username progress.
+        get().saveAccountData();
 
         return true;
       },
@@ -98,19 +99,35 @@ export const useAuthStore = create<AuthState>()(
           colors: ['#4285F4', '#EA4335', '#FBBC05', '#34A853'],
         });
 
-        set({ user: googleUser });
+        set({ user: googleUser, isGoogleVerified: false });
 
-        const loaded = get().loadAccountData();
-        if (!loaded) {
-          get().saveAccountData();
-        }
+        // Save current active browser data to this profile
+        get().saveAccountData();
+      },
+
+      bindCurrentDataToEmail: (email: string) => {
+        const currentUser = get().user;
+        const targetEmail = email.trim().toLowerCase();
+        if (!targetEmail) return;
+
+        const updatedUser: GoogleUser = currentUser
+          ? { ...currentUser, email: targetEmail }
+          : {
+              id: 'usr-' + Date.now(),
+              email: targetEmail,
+              name: targetEmail.split('@')[0],
+              lastLoginAt: new Date().toISOString(),
+            };
+
+        set({ user: updatedUser });
+        get().saveAccountData();
       },
 
       logout: () => {
         soundFx.playClick();
-        // Save before logout
+        // Save current data before logout
         get().saveAccountData();
-        set({ user: null, lastSyncedAt: null });
+        set({ user: null, lastSyncedAt: null, isGoogleVerified: false });
       },
 
       setGoogleClientId: (id: string) => set({ googleClientId: id }),
