@@ -16,3 +16,4 @@ export interface UserAccountBackup {
   gamify: unknown;
   timer: unknown;
 }
+
