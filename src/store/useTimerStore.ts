@@ -375,6 +375,18 @@ export const useTimerStore = create<TimerState>()(
           // 6. Auto-sync to Google Account if logged in
           useAuthStore.getState().saveAccountData();
 
+          // 6.5 Send system browser notification if enabled
+          try {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification('⚔️ Quest Fokus Selesai!', {
+                body: `Hebat! Sesi fokus "${resolvedTitle}" telah selesai. Waktunya istirahat sejenak!`,
+                icon: '/favicon.svg',
+              });
+            }
+          } catch {
+            // Notification denied or not supported
+          }
+
           // 7. Pop up celebratory summary modal and keep display at 00:00!
           set({
             timeRemaining: 0,
@@ -392,6 +404,17 @@ export const useTimerStore = create<TimerState>()(
         } else {
           // Break finished!
           soundFx.playBreakStart();
+
+          try {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification('☕ Istirahat Selesai!', {
+                body: 'Waktu istirahat telah usai! Siap untuk sesi fokus berikutnya?',
+                icon: '/favicon.svg',
+              });
+            }
+          } catch {
+            // Notification denied or not supported
+          }
 
           set({
             timeRemaining: 0,

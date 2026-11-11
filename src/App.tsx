@@ -119,6 +119,58 @@ export function App() {
     return () => clearInterval(timerInterval);
   }, [tick]);
 
+  // Mobile Phone Wake-up & Tab Focus Listener:
+  // When mobile phone screen unlocks or user returns to tab, immediately sync timer
+  useEffect(() => {
+    const handleWakeUp = () => {
+      if (document.visibilityState === 'visible') {
+        tick();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleWakeUp);
+    window.addEventListener('focus', handleWakeUp);
+    return () => {
+      document.removeEventListener('visibilitychange', handleWakeUp);
+      window.removeEventListener('focus', handleWakeUp);
+    };
+  }, [tick]);
+
+  // Screen Wake Lock API: Keeps mobile screen alive during focus sessions
+  useEffect(() => {
+    let wakeLockSentinel: { release: () => Promise<void> } | null = null;
+
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && status === 'running' && document.visibilityState === 'visible') {
+        try {
+          const nav = navigator as unknown as { wakeLock: { request: (type: string) => Promise<{ release: () => Promise<void> }> } };
+          wakeLockSentinel = await nav.wakeLock.request('screen');
+        } catch {
+          // Wake lock might be denied by system battery saver
+        }
+      }
+    };
+
+    if (status === 'running') {
+      requestWakeLock();
+    }
+
+    const handleReacquire = () => {
+      if (document.visibilityState === 'visible' && status === 'running') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleReacquire);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleReacquire);
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+      }
+    };
+  }, [status]);
+
   // Update document title with remaining time
   useEffect(() => {
     const timeFormatted = formatTime(timeRemaining);
