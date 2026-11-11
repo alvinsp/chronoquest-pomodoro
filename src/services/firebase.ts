@@ -89,6 +89,61 @@ export function getFirebaseConfig(): FirebaseConfig | null {
 }
 
 /**
+ * Robustly parses any raw Firebase snippet, including JavaScript variable declaration
+ * `const firebaseConfig = { ... };` or raw JSON without breaking on complex values like appId.
+ */
+export function parseFirebaseConfigText(rawInput: string): FirebaseConfig | null {
+  if (!rawInput) return null;
+  const text = rawInput.trim();
+
+  // Helper to extract a field by key name regardless of quoting or formatting
+  const extract = (key: string): string => {
+    // Matches key: "value", "key": 'value', key: 'value', etc.
+    const regex = new RegExp(`['"]?${key}['"]?\\s*:\\s*['"\`]([^'"\`]+)['"\`]`, 'i');
+    const match = text.match(regex);
+    return match && match[1] ? match[1].trim() : '';
+  };
+
+  const apiKey = extract('apiKey');
+  const projectId = extract('projectId');
+
+  if (apiKey && projectId) {
+    const authDomain = extract('authDomain') || `${projectId}.firebaseapp.com`;
+    const storageBucket = extract('storageBucket') || `${projectId}.appspot.com`;
+    const messagingSenderId = extract('messagingSenderId');
+    const appId = extract('appId');
+
+    return {
+      apiKey,
+      projectId,
+      authDomain,
+      storageBucket,
+      messagingSenderId,
+      appId,
+    };
+  }
+
+  // Also try standard JSON.parse if user pasted pure JSON
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed.apiKey && parsed.projectId) {
+      return {
+        apiKey: parsed.apiKey,
+        projectId: parsed.projectId,
+        authDomain: parsed.authDomain || `${parsed.projectId}.firebaseapp.com`,
+        storageBucket: parsed.storageBucket || `${parsed.projectId}.appspot.com`,
+        messagingSenderId: parsed.messagingSenderId || '',
+        appId: parsed.appId || '',
+      };
+    }
+  } catch {
+    // Ignore JSON error
+  }
+
+  return null;
+}
+
+/**
  * Saves custom Firebase configuration to localStorage and re-initializes
  */
 export function saveFirebaseConfig(config: FirebaseConfig): boolean {
@@ -258,3 +313,4 @@ export function subscribeToRealtimeSync(
     return null;
   }
 }
+

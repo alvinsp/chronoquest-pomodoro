@@ -31,6 +31,7 @@ import {
   saveFirebaseConfig,
   clearFirebaseConfig,
   isFirebaseConfigured,
+  parseFirebaseConfigText,
   pushLocalDataToFirestore,
   pullLatestDataFromFirestore,
 } from '../../services/firebase';
@@ -145,34 +146,23 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     }
   };
 
+  const detectedFirebaseConfig = parseFirebaseConfigText(firebaseConfigInput);
+
   const handleSaveFirebaseConfigJson = () => {
     try {
-      let text = firebaseConfigInput.trim();
-      if (!text) return;
-      if (text.includes('{') && text.includes('}')) {
-        const start = text.indexOf('{');
-        const end = text.lastIndexOf('}');
-        text = text.substring(start, end + 1);
-        text = text.replace(/([a-zA-Z0-9_]+)\s*:/g, '"$1":').replace(/'/g, '"');
-        const parsed = JSON.parse(text);
-        if (parsed.apiKey && parsed.projectId) {
-          saveFirebaseConfig({
-            apiKey: parsed.apiKey,
-            projectId: parsed.projectId,
-            authDomain: parsed.authDomain || `${parsed.projectId}.firebaseapp.com`,
-            storageBucket: parsed.storageBucket || `${parsed.projectId}.appspot.com`,
-            messagingSenderId: parsed.messagingSenderId || '',
-            appId: parsed.appId || '',
-          });
+      const config = parseFirebaseConfigText(firebaseConfigInput);
+      if (config && config.apiKey && config.projectId) {
+        const ok = saveFirebaseConfig(config);
+        if (ok) {
           setIsCloudConfiguredState(true);
           setShowFirebaseSetup(false);
-          setSyncSuccessMsg('🎉 Firebase Cloud Database berhasil terhubung! Realtime sync aktif.');
+          setSyncSuccessMsg(`🎉 Berhasil terhubung ke Firebase Cloud (${config.projectId})! Realtime sync aktif.`);
           return;
         }
       }
-      setSyncSuccessMsg('Format Firebase config tidak valid. Tempelkan objek { apiKey: "...", projectId: "..." }');
+      setSyncSuccessMsg('Format Firebase config tidak valid. Cukup tempelkan seluruh teks "const firebaseConfig = { ... };"');
     } catch {
-      setSyncSuccessMsg('Gagal memproses konfigurasi Firebase. Pastikan format JSON benar.');
+      setSyncSuccessMsg('Gagal memproses konfigurasi Firebase.');
     }
   };
 
@@ -556,6 +546,27 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                   className="w-full bg-[#0a121e] border border-[#2f496e] p-2 text-[10px] font-mono text-[#00f0ff] outline-none resize-none"
                 />
               </div>
+
+              {/* Live Detection Preview */}
+              {detectedFirebaseConfig ? (
+                <div className="p-2 bg-[#052e16] border border-[#00ff66] text-[10px] text-[#00ff66] space-y-0.5">
+                  <div className="font-bold flex items-center gap-1">
+                    <Check size={12} /> Konfigurasi Firebase Terdeteksi:
+                  </div>
+                  <div className="text-[10px] text-[#b3e6c9]">
+                    Project ID: <span className="font-mono text-white">{detectedFirebaseConfig.projectId}</span>
+                  </div>
+                  <div className="text-[10px] text-[#b3e6c9]">
+                    API Key: <span className="font-mono text-white">{detectedFirebaseConfig.apiKey.slice(0, 10)}...</span>
+                  </div>
+                </div>
+              ) : (
+                firebaseConfigInput.trim() !== '' && (
+                  <div className="p-2 bg-[#2d1215] border border-[#ff4444] text-[10px] text-[#ff8888]">
+                    ⚠️ Belum mendeteksi apiKey atau projectId. Pastikan teks mencakup apiKey dan projectId.
+                  </div>
+                )
+              )}
 
               <div className="flex justify-end gap-2">
                 <button
