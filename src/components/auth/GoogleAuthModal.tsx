@@ -24,6 +24,7 @@ import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { formatDatePretty } from '../../utils/formatters';
 import { generateSyncUrlAndQr } from '../../utils/syncManager';
+import { rehydrateAllStores } from '../../store/rehydrateStores';
 import {
   saveFirebaseConfig,
   clearFirebaseConfig,
@@ -127,8 +128,8 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     const ok = await pullLatestDataFromFirestore(email);
     setIsPullingCloud(false);
     if (ok) {
-      setSyncSuccessMsg('🎉 Berhasil menarik data terbaru dari Firebase Cloud! Memuat ulang...');
-      setTimeout(() => window.location.reload(), 800);
+      await rehydrateAllStores();
+      setSyncSuccessMsg('🎉 Berhasil menarik data terbaru dari Firebase Cloud!');
     } else {
       setSyncSuccessMsg('Belum ada data cadangan di Firebase Cloud untuk email ini.');
     }

@@ -172,6 +172,11 @@ export function applySyncPayloadToLocalStorage(payload: SyncPayload): boolean {
       );
     }
 
+    // Set the sync timestamp so real-time cloud sync won't re-trigger right after applying URL sync!
+    const syncTs = payload.timestamp || Date.now();
+    localStorage.setItem("chronoquest_last_cloud_sync", new Date(syncTs).toISOString());
+    localStorage.setItem("chronoquest_last_cloud_sync_timestamp", String(syncTs));
+
     return true;
   } catch {
     return false;

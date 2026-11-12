@@ -212,10 +212,11 @@ export async function pushLocalDataToFirestore(userEmail: string): Promise<boole
   try {
     const cleanKey = sanitizeEmailKey(userEmail);
     const userDocRef = doc(db, 'chronoquest_users', cleanKey);
+    const now = Date.now();
 
     const payload: CloudUserData = {
       email: userEmail.trim().toLowerCase(),
-      lastUpdated: Date.now(),
+      lastUpdated: now,
       updatedByDeviceId: DEVICE_ID,
       data: {
         hero: localStorage.getItem('pixel-pomodoro-gamify') || null,
@@ -227,7 +228,8 @@ export async function pushLocalDataToFirestore(userEmail: string): Promise<boole
     };
 
     await setDoc(userDocRef, payload, { merge: true });
-    localStorage.setItem('chronoquest_last_cloud_sync', new Date().toISOString());
+    localStorage.setItem('chronoquest_last_cloud_sync', new Date(now).toISOString());
+    localStorage.setItem('chronoquest_last_cloud_sync_timestamp', String(now));
     return true;
   } catch (err) {
     console.error('Failed to push data to Firestore:', err);
@@ -271,7 +273,9 @@ export function applyCloudDataToLocalStorage(cloudData: CloudUserData): boolean 
     if (data.notes) localStorage.setItem('pixel-pomodoro-notes', data.notes);
     if (data.timer) localStorage.setItem('pixel-pomodoro-timer', data.timer);
 
-    localStorage.setItem('chronoquest_last_cloud_sync', new Date().toISOString());
+    const updateTs = cloudData.lastUpdated || Date.now();
+    localStorage.setItem('chronoquest_last_cloud_sync', new Date(updateTs).toISOString());
+    localStorage.setItem('chronoquest_last_cloud_sync_timestamp', String(updateTs));
     return true;
   } catch {
     return false;
@@ -299,8 +303,18 @@ export function subscribeToRealtimeSync(
         if (!docSnap.exists()) return;
         const remoteData = docSnap.data() as CloudUserData;
 
-        // Ignore updates originated by this same device to avoid loop
-        if (remoteData.updatedByDeviceId === DEVICE_ID) return;
+        // 1. Ignore updates originated by this same device to avoid loop
+        if (remoteData.updatedByDeviceId && remoteData.updatedByDeviceId === DEVICE_ID) {
+          return;
+        }
+
+        // 2. Ignore if remote timestamp is not newer than what we already applied
+        const lastAppliedTimestamp = Number(
+          localStorage.getItem('chronoquest_last_cloud_sync_timestamp') || 0
+        );
+        if (remoteData.lastUpdated && remoteData.lastUpdated <= lastAppliedTimestamp) {
+          return;
+        }
 
         onRemoteChange(remoteData);
       },

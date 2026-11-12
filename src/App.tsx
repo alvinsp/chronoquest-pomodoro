@@ -36,6 +36,7 @@ import { useAuthStore } from './store/useAuthStore';
 import { useGoalStore } from './store/useGoalStore';
 import { formatTime } from './utils/formatters';
 import { decodeSyncPayloadString, applySyncPayloadToLocalStorage } from './utils/syncManager';
+import { rehydrateAllStores } from './store/rehydrateStores';
 import {
   subscribeToRealtimeSync,
   applyCloudDataToLocalStorage,
@@ -97,18 +98,21 @@ export function App() {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash;
     if (hash && hash.includes('sync=')) {
+      // 1. Immediately wipe the hash from the browser address bar & history to prevent ANY reload loop
+      try {
+        window.history.replaceState(null, '', window.location.origin + window.location.pathname);
+      } catch {}
+
       const match = hash.match(/sync=([^&]+)/);
       if (match && match[1]) {
         const rawCode = decodeURIComponent(match[1]);
-        decodeSyncPayloadString(rawCode).then((payload) => {
+        decodeSyncPayloadString(rawCode).then(async (payload) => {
           if (payload) {
             const success = applySyncPayloadToLocalStorage(payload);
             if (success) {
-              window.history.replaceState(null, '', window.location.pathname);
-              alert(
-                `🎉 SINKRONISASI PERANGKAT BERHASIL!\n\nSeluruh data akun (${payload.userEmail}) telah disalin ke perangkat ini.\n\nHalaman akan dimuat ulang dengan data terbarumu.`
-              );
-              window.location.reload();
+              await rehydrateAllStores();
+              // Replace history with clean URL without hash so no browser reload can loop back
+              window.location.replace(window.location.origin + window.location.pathname);
             }
           }
         });
@@ -121,10 +125,11 @@ export function App() {
     const user = useAuthStore.getState().user;
     if (!user?.email || !isFirebaseConfigured()) return;
 
-    const unsubscribe = subscribeToRealtimeSync(user.email, (remoteData) => {
+    const unsubscribe = subscribeToRealtimeSync(user.email, async (remoteData) => {
       const ok = applyCloudDataToLocalStorage(remoteData);
       if (ok) {
-        window.location.reload();
+        // In-memory smooth rehydration! NO window.location.reload() to eliminate loops!
+        await rehydrateAllStores();
       }
     });
 
