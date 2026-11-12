@@ -5,7 +5,17 @@ import { formatTime } from '../../utils/formatters';
 import { Flame, Coffee, Sparkles } from 'lucide-react';
 
 export const TimerDisplay: React.FC = () => {
-  const { mode, status, timeRemaining, totalDuration, currentRound, presets, activePresetId, setMode } = useTimerStore();
+  const {
+    mode,
+    status,
+    timeRemaining,
+    totalDuration,
+    currentRound,
+    presets,
+    activePresetId,
+    setMode,
+    resetRoundCycle,
+  } = useTimerStore();
   const { identities, activeIdentityId } = useGoalStore();
 
   const preset = presets.find((p) => p.id === activePresetId) || presets[0];
@@ -89,10 +99,15 @@ export const TimerDisplay: React.FC = () => {
             </span>
           </div>
 
-          {/* Round Indicator */}
-          <div className="flex items-center gap-1.5 bg-[#181528] px-2.5 py-1 border border-[#3b335c]">
-            <span className="font-silkscreen text-[11px] text-[#9f97ba]">
-              RONDE {currentRound}/{preset.roundsBeforeLongBreak}
+          {/* Round Indicator with 1-click Reset */}
+          <button
+            type="button"
+            onClick={resetRoundCycle}
+            title="Klik untuk reset siklus ronde kembali ke Ronde 1"
+            className="flex items-center gap-1.5 bg-[#181528] px-2.5 py-1 border border-[#3b335c] hover:border-[#ff0055] cursor-pointer transition-all group"
+          >
+            <span className="font-silkscreen text-[11px] text-[#9f97ba] group-hover:text-white">
+              RONDE {Math.min(preset.roundsBeforeLongBreak, Math.max(1, currentRound))}/{preset.roundsBeforeLongBreak}
             </span>
             <div className="flex gap-1 ml-1">
               {Array.from({ length: preset.roundsBeforeLongBreak }).map((_, idx) => (
@@ -104,7 +119,7 @@ export const TimerDisplay: React.FC = () => {
                 />
               ))}
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Big Retro Digital Time Text */}

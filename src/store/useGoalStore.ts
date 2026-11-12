@@ -111,12 +111,14 @@ export const useGoalStore = create<GoalState>()(
 
       addGoal: (goalData) => {
         soundFx.playCoin();
+        const todayStr = getTodayDateString();
         const newGoal: Goal = {
           ...goalData,
           id: "goal-" + Date.now(),
           currentMinutes: 0,
           currentSessions: 0,
           completed: false,
+          date: goalData.date || (goalData.period === "daily" ? todayStr : undefined),
           createdAt: new Date().toISOString(),
         };
         set((state) => ({
@@ -147,7 +149,11 @@ export const useGoalStore = create<GoalState>()(
           goals: state.goals.map((g) => {
             if (g.id === id) {
               const nextVal = !g.completed;
-              return { ...g, completed: nextVal };
+              return {
+                ...g,
+                completed: nextVal,
+                currentMinutes: nextVal && g.targetMinutes > 0 ? Math.max(g.currentMinutes, g.targetMinutes) : g.currentMinutes,
+              };
             }
             return g;
           }),
@@ -163,13 +169,14 @@ export const useGoalStore = create<GoalState>()(
             // Monthly and annually goals are high-level milestone visions and don't count time.
             if (goal.period !== "daily") return goal;
 
+            // CRITICAL FIX: If specificGoalId is provided, ONLY update THAT specific goal!
+            // Never bleed minutes/sessions into other goals under the same identity!
             let isRelevant = false;
-            if (specificGoalId && goal.id === specificGoalId) {
-              isRelevant = true;
-            } else if (goal.identityId === identityId) {
-              if (!goal.date || goal.date === todayStr) {
-                isRelevant = true;
-              }
+            if (specificGoalId) {
+              isRelevant = goal.id === specificGoalId;
+            } else {
+              // Only fallback to identity if NO specific goal was targeted
+              isRelevant = goal.identityId === identityId && (!goal.date || goal.date === todayStr);
             }
 
             if (!isRelevant) return goal;
@@ -177,9 +184,14 @@ export const useGoalStore = create<GoalState>()(
             const nextMinutes = goal.currentMinutes + durationMinutes;
             const nextSessions = goal.currentSessions + 1;
             const targetMins = goal.targetMinutes || 60;
-            const targetSess = goal.targetSessions || 2;
+
+            // Completed ONLY when target minutes is reached (or sessions if no targetMinutes)!
             const completed =
-              nextMinutes >= targetMins || nextSessions >= targetSess;
+              targetMins > 0
+                ? nextMinutes >= targetMins
+                : goal.targetSessions
+                ? nextSessions >= goal.targetSessions
+                : false;
 
             return {
               ...goal,
@@ -199,8 +211,16 @@ export const useGoalStore = create<GoalState>()(
         let changed = false;
         const updatedGoals = goals.map((goal) => {
           if (goal.period === "daily") {
-            // If goal date is missing or older than today, refresh it for the new day!
-            if (!goal.date || goal.date !== todayStr) {
+            // If goal date is missing, do NOT wipe minutes! Just tag it with todayStr
+            if (!goal.date) {
+              changed = true;
+              return {
+                ...goal,
+                date: todayStr,
+              };
+            }
+            // If goal date is from an earlier day (yesterday or older), rollover to new day!
+            if (goal.date !== todayStr) {
               changed = true;
               return {
                 ...goal,
@@ -244,6 +264,15 @@ export const useGoalStore = create<GoalState>()(
         if (!state) return;
         // Auto-refresh daily goals when day changes!
         state.checkAndRolloverDailyGoals();
+
+        // Self-heal: If a daily goal has targetMinutes > 0 and currentMinutes < targetMinutes,
+        // but was falsely marked completed by the session-count bug, un-complete it!
+        state.goals = state.goals.map((g) => {
+          if (g.period === "daily" && g.targetMinutes > 0 && g.currentMinutes < g.targetMinutes && g.completed) {
+            return { ...g, completed: false };
+          }
+          return g;
+        });
 
         if (!state.activeGoalId && state.goals.length > 0) {
           const firstDaily = state.goals.find(

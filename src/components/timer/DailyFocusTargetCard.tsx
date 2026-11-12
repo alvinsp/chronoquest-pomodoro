@@ -24,6 +24,12 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
   const { getTodayMinutes, getTodaySessionsCount, currentStreak } = useStatsStore();
   const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
 
+  const handleResetDailyConfirm = () => {
+    if (window.confirm('Reset seluruh jam & progres Target Harian hari ini kembali ke 0?')) {
+      resetDailyGoalsToToday();
+    }
+  };
+
   // Auto-refresh daily goals when day changes
   useEffect(() => {
     checkAndRolloverDailyGoals();
@@ -74,11 +80,11 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
 
           <button
             type="button"
-            onClick={resetDailyGoalsToToday}
-            className="text-xs font-silkscreen px-2 py-1 bg-[#1c1830] text-[#9bb0cf] border border-[#3b325c] hover:border-[#00f0ff] hover:text-[#00f0ff] cursor-pointer flex items-center gap-1 transition-all"
-            title="Segarkan target fokus untuk hari baru (reset jam harian ke 0)"
+            onClick={handleResetDailyConfirm}
+            className="text-xs font-silkscreen px-2 py-1 bg-[#1c1830] text-[#9bb0cf] border border-[#3b325c] hover:border-[#ff0055] hover:text-[#ff0055] cursor-pointer flex items-center gap-1 transition-all"
+            title="Reset jam & progres harian kembali ke 0 untuk hari ini"
           >
-            <RotateCcw size={11} /> Refresh Hari Baru
+            <RotateCcw size={11} /> Reset Harian
           </button>
 
           {onOpenAddGoal && (
@@ -110,7 +116,9 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
             </div>
           </div>
           <span className="text-[10px] font-pixel px-2 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff] shrink-0 whitespace-nowrap">
-            {Math.min(100, Math.round((activeGoal.currentMinutes / activeGoal.targetMinutes) * 100))}% Selesai
+            {activeGoal.targetMinutes > 0
+              ? `${Math.min(100, Math.round((activeGoal.currentMinutes / activeGoal.targetMinutes) * 100))}% Selesai`
+              : activeGoal.completed ? '100% Selesai' : '0% Selesai'}
           </span>
         </div>
       )}
@@ -151,9 +159,13 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
         <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
           {dailyGoals.map((g) => {
             const identity = getIdentity(g.identityId);
-            const isCompleted = g.completed || g.currentMinutes >= g.targetMinutes;
+            const isCompleted = g.targetMinutes > 0
+              ? (g.currentMinutes >= g.targetMinutes || g.completed)
+              : Boolean(g.completed);
             const isActive = g.id === activeGoalId;
-            const progress = Math.min(100, Math.round((g.currentMinutes / g.targetMinutes) * 100));
+            const progress = g.targetMinutes > 0
+              ? Math.min(100, Math.round((g.currentMinutes / g.targetMinutes) * 100))
+              : (isCompleted ? 100 : 0);
 
             return (
               <div

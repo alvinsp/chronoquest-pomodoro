@@ -47,6 +47,7 @@ interface TimerState {
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
+  resetRoundCycle: () => void;
   skipSession: () => void;
   tick: () => void;
   finishCurrentSession: () => void;
@@ -77,12 +78,14 @@ export const useTimerStore = create<TimerState>()(
         const preset =
           get().presets.find((p) => p.id === presetId) || get().presets[0];
         const mode = get().mode;
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
         let durationMins = preset.focusMinutes;
         if (mode === "shortBreak") durationMins = preset.shortBreakMinutes;
         if (mode === "longBreak") durationMins = preset.longBreakMinutes;
 
         set({
           activePresetId: presetId,
+          currentRound: Math.min(maxRounds, Math.max(1, get().currentRound || 1)),
           status: "idle",
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
@@ -123,12 +126,22 @@ export const useTimerStore = create<TimerState>()(
         const preset =
           get().presets.find((p) => p.id === get().activePresetId) ||
           get().presets[0];
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
         let durationMins = preset.focusMinutes;
         if (mode === "shortBreak") durationMins = preset.shortBreakMinutes;
         if (mode === "longBreak") durationMins = preset.longBreakMinutes;
 
+        const currentRound = get().currentRound || 1;
+        const currentMode = get().mode;
+        let nextRound = currentRound;
+        // If coming from long break or round exceeded, reset to 1
+        if (mode === "focus" && (currentMode === "longBreak" || currentRound > maxRounds)) {
+          nextRound = 1;
+        }
+
         set({
           mode,
+          currentRound: Math.min(maxRounds, Math.max(1, nextRound)),
           status: "idle",
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
@@ -183,14 +196,37 @@ export const useTimerStore = create<TimerState>()(
           get().presets.find((p) => p.id === get().activePresetId) ||
           get().presets[0];
         const mode = get().mode;
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
         let durationMins = preset.focusMinutes;
         if (mode === "shortBreak") durationMins = preset.shortBreakMinutes;
         if (mode === "longBreak") durationMins = preset.longBreakMinutes;
 
+        const currentRound = get().currentRound || 1;
+        const nextRound = (mode === "longBreak" || currentRound > maxRounds) ? 1 : currentRound;
+
         set({
           status: "idle",
+          currentRound: nextRound,
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
+          targetEndTime: null,
+          lastTickTimestamp: null,
+          completedSummary: null,
+          isFinishingSession: false,
+        });
+      },
+
+      resetRoundCycle: () => {
+        soundFx.playClick();
+        const preset =
+          get().presets.find((p) => p.id === get().activePresetId) ||
+          get().presets[0];
+        set({
+          currentRound: 1,
+          mode: "focus",
+          status: "idle",
+          timeRemaining: preset.focusMinutes * 60,
+          totalDuration: preset.focusMinutes * 60,
           targetEndTime: null,
           lastTickTimestamp: null,
           completedSummary: null,
@@ -203,10 +239,11 @@ export const useTimerStore = create<TimerState>()(
         const { mode, currentRound, presets, activePresetId } = get();
         const preset =
           presets.find((p) => p.id === activePresetId) || presets[0];
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
 
         if (mode === "focus") {
           // Switch to break
-          const isLongBreak = currentRound >= preset.roundsBeforeLongBreak;
+          const isLongBreak = currentRound >= maxRounds;
           const nextMode = isLongBreak ? "longBreak" : "shortBreak";
           const durationMins = isLongBreak
             ? preset.longBreakMinutes
@@ -224,7 +261,8 @@ export const useTimerStore = create<TimerState>()(
           });
         } else {
           // Break finished -> Next focus round
-          const nextRound = mode === "longBreak" ? 1 : currentRound + 1;
+          // If previous break was longBreak OR round was 4, start fresh at Round 1!
+          const nextRound = (mode === "longBreak" || currentRound >= maxRounds) ? 1 : currentRound + 1;
           set({
             mode: "focus",
             status: "idle",
@@ -436,10 +474,11 @@ export const useTimerStore = create<TimerState>()(
         const { mode, presets, activePresetId, currentRound } = get();
         const preset =
           presets.find((p) => p.id === activePresetId) || presets[0];
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
 
         if (mode === "focus") {
           // Prepare next break mode
-          const isLong = currentRound >= preset.roundsBeforeLongBreak;
+          const isLong = currentRound >= maxRounds;
           const nextMode: TimerMode = isLong ? "longBreak" : "shortBreak";
           const breakMins = isLong
             ? preset.longBreakMinutes
@@ -455,7 +494,8 @@ export const useTimerStore = create<TimerState>()(
           });
         } else {
           // Prepare next focus mode
-          const nextRound = mode === "longBreak" ? 1 : currentRound + 1;
+          // If previous break was longBreak OR round was at max, cycle back to Round 1!
+          const nextRound = (mode === "longBreak" || currentRound >= maxRounds) ? 1 : currentRound + 1;
           set({
             completedSummary: null,
             mode: "focus",
@@ -474,7 +514,8 @@ export const useTimerStore = create<TimerState>()(
         const { currentRound, presets, activePresetId } = get();
         const preset =
           presets.find((p) => p.id === activePresetId) || presets[0];
-        const isLong = currentRound >= preset.roundsBeforeLongBreak;
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
+        const isLong = currentRound >= maxRounds;
         const nextMode: TimerMode = isLong ? "longBreak" : "shortBreak";
         const breakMins = isLong
           ? preset.longBreakMinutes
@@ -498,7 +539,10 @@ export const useTimerStore = create<TimerState>()(
         const { currentRound, presets, activePresetId, mode } = get();
         const preset =
           presets.find((p) => p.id === activePresetId) || presets[0];
-        const nextRound = mode === "longBreak" ? 1 : currentRound + 1;
+        const maxRounds = preset.roundsBeforeLongBreak || 4;
+
+        // CRITICAL FIX: If coming from long break OR if focus round completed was round 4, wrap to 1!
+        const nextRound = (mode === "longBreak" || currentRound >= maxRounds) ? 1 : currentRound + 1;
         const durationSec = preset.focusMinutes * 60;
 
         set({
@@ -529,6 +573,12 @@ export const useTimerStore = create<TimerState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+
+        // Clamp stored round to valid range [1, 4] so no user remains stuck at 4 or 5
+        if (!state.currentRound || state.currentRound < 1 || state.currentRound > 4) {
+          state.currentRound = 1;
+        }
+
         // If timer was running when page was closed/reloaded, recalculate elapsed time
         if (state.status === "running" && state.targetEndTime) {
           const now = Date.now();
