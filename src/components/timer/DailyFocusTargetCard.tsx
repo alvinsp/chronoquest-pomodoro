@@ -20,6 +20,7 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
     toggleGoalComplete,
     checkAndRolloverDailyGoals,
     resetDailyGoalsToToday,
+    resetSingleGoalProgress,
   } = useGoalStore();
   const { getTodayMinutes, getTodaySessionsCount, currentStreak } = useStatsStore();
   const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
@@ -27,6 +28,13 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
   const handleResetDailyConfirm = () => {
     if (window.confirm('Reset seluruh jam & progres Target Harian hari ini kembali ke 0?')) {
       resetDailyGoalsToToday();
+    }
+  };
+
+  const handleResetSingleGoal = (e: React.MouseEvent, g: Goal) => {
+    e.stopPropagation();
+    if (window.confirm(`Reset progres target "${g.title}" kembali ke 0 menit & 0 sesi?`)) {
+      resetSingleGoalProgress(g.id);
     }
   };
 
@@ -115,11 +123,21 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-pixel px-2 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff] shrink-0 whitespace-nowrap">
-            {activeGoal.targetMinutes > 0
-              ? `${Math.min(100, Math.round((activeGoal.currentMinutes / activeGoal.targetMinutes) * 100))}% Selesai`
-              : activeGoal.completed ? '100% Selesai' : '0% Selesai'}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-pixel px-2 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff] shrink-0 whitespace-nowrap">
+              {activeGoal.targetMinutes > 0
+                ? `${Math.min(100, Math.round((activeGoal.currentMinutes / activeGoal.targetMinutes) * 100))}% Selesai`
+                : activeGoal.completed ? '100% Selesai' : '0% Selesai'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveGoalId(null)}
+              className="text-[10px] font-silkscreen px-2 py-0.5 bg-[#1c1830] text-[#ff4d79] border border-[#ff4d79]/60 hover:bg-[#ff0055] hover:text-white cursor-pointer transition-all"
+              title="Lepas target aktif (timer berjalan normal tanpa target khusus)"
+            >
+              ✕ Lepas
+            </button>
+          </div>
         </div>
       )}
 
@@ -233,6 +251,18 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
                     >
                       <Target size={10} />
                       <span className="hidden sm:inline">Set</span> Aktif
+                    </button>
+                  )}
+
+                  {/* Reset Single Goal Button */}
+                  {(g.currentMinutes > 0 || g.currentSessions > 0 || isCompleted) && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleResetSingleGoal(e, g)}
+                      className="p-1 bg-[#1c1830] hover:bg-[#341626] text-[#8e85aa] hover:text-[#ff0055] border border-[#3b335c] hover:border-[#ff0055] text-[10px] font-silkscreen cursor-pointer transition-all"
+                      title={`Reset progres "${g.title}" kembali ke 0`}
+                    >
+                      <RotateCcw size={11} />
                     </button>
                   )}
 

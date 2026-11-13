@@ -85,7 +85,10 @@ export const useTimerStore = create<TimerState>()(
 
         set({
           activePresetId: presetId,
-          currentRound: Math.min(maxRounds, Math.max(1, get().currentRound || 1)),
+          currentRound: Math.min(
+            maxRounds,
+            Math.max(1, get().currentRound || 1),
+          ),
           status: "idle",
           timeRemaining: durationMins * 60,
           totalDuration: durationMins * 60,
@@ -135,7 +138,10 @@ export const useTimerStore = create<TimerState>()(
         const currentMode = get().mode;
         let nextRound = currentRound;
         // If coming from long break or round exceeded, reset to 1
-        if (mode === "focus" && (currentMode === "longBreak" || currentRound > maxRounds)) {
+        if (
+          mode === "focus" &&
+          (currentMode === "longBreak" || currentRound > maxRounds)
+        ) {
           nextRound = 1;
         }
 
@@ -202,7 +208,8 @@ export const useTimerStore = create<TimerState>()(
         if (mode === "longBreak") durationMins = preset.longBreakMinutes;
 
         const currentRound = get().currentRound || 1;
-        const nextRound = (mode === "longBreak" || currentRound > maxRounds) ? 1 : currentRound;
+        const nextRound =
+          mode === "longBreak" || currentRound > maxRounds ? 1 : currentRound;
 
         set({
           status: "idle",
@@ -262,7 +269,10 @@ export const useTimerStore = create<TimerState>()(
         } else {
           // Break finished -> Next focus round
           // If previous break was longBreak OR round was 4, start fresh at Round 1!
-          const nextRound = (mode === "longBreak" || currentRound >= maxRounds) ? 1 : currentRound + 1;
+          const nextRound =
+            mode === "longBreak" || currentRound >= maxRounds
+              ? 1
+              : currentRound + 1;
           set({
             mode: "focus",
             status: "idle",
@@ -278,7 +288,8 @@ export const useTimerStore = create<TimerState>()(
       },
 
       tick: () => {
-        const { status, targetEndTime, timeRemaining, isFinishingSession } = get();
+        const { status, targetEndTime, timeRemaining, isFinishingSession } =
+          get();
         if (status !== "running" || isFinishingSession) return;
 
         const now = Date.now();
@@ -341,18 +352,10 @@ export const useTimerStore = create<TimerState>()(
           const { activeGoalId, goals, identities } = useGoalStore.getState();
           const identity = identities.find((i) => i.id === activeIdentityId);
 
-          // Resolve the active goal
-          const activeGoal =
-            (activeGoalId ? goals.find((g) => g.id === activeGoalId) : null) ||
-            goals.find(
-              (g) =>
-                g.period === "daily" &&
-                g.identityId === activeIdentityId &&
-                !g.completed,
-            ) ||
-            goals.find(
-              (g) => g.identityId === activeIdentityId && !g.completed,
-            );
+          // Resolve the active goal (ONLY if explicitly selected by the user!)
+          const activeGoal = activeGoalId
+            ? goals.find((g) => g.id === activeGoalId) || null
+            : null;
 
           let resolvedTitle = taskTitle?.trim();
           if (
@@ -415,10 +418,14 @@ export const useTimerStore = create<TimerState>()(
 
           // 6.5 Send system browser notification if enabled
           try {
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-              new Notification('⚔️ Quest Fokus Selesai!', {
+            if (
+              typeof window !== "undefined" &&
+              "Notification" in window &&
+              Notification.permission === "granted"
+            ) {
+              new Notification("⚔️ Quest Fokus Selesai!", {
                 body: `Hebat! Sesi fokus "${resolvedTitle}" telah selesai. Waktunya istirahat sejenak!`,
-                icon: '/favicon.svg',
+                icon: "/favicon.svg",
               });
             }
           } catch {
@@ -444,10 +451,14 @@ export const useTimerStore = create<TimerState>()(
           soundFx.playBreakStart();
 
           try {
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-              new Notification('☕ Istirahat Selesai!', {
-                body: 'Waktu istirahat telah usai! Siap untuk sesi fokus berikutnya?',
-                icon: '/favicon.svg',
+            if (
+              typeof window !== "undefined" &&
+              "Notification" in window &&
+              Notification.permission === "granted"
+            ) {
+              new Notification("☕ Istirahat Selesai!", {
+                body: "Waktu istirahat telah usai! Siap untuk sesi fokus berikutnya?",
+                icon: "/favicon.svg",
               });
             }
           } catch {
@@ -495,7 +506,10 @@ export const useTimerStore = create<TimerState>()(
         } else {
           // Prepare next focus mode
           // If previous break was longBreak OR round was at max, cycle back to Round 1!
-          const nextRound = (mode === "longBreak" || currentRound >= maxRounds) ? 1 : currentRound + 1;
+          const nextRound =
+            mode === "longBreak" || currentRound >= maxRounds
+              ? 1
+              : currentRound + 1;
           set({
             completedSummary: null,
             mode: "focus",
@@ -542,7 +556,10 @@ export const useTimerStore = create<TimerState>()(
         const maxRounds = preset.roundsBeforeLongBreak || 4;
 
         // CRITICAL FIX: If coming from long break OR if focus round completed was round 4, wrap to 1!
-        const nextRound = (mode === "longBreak" || currentRound >= maxRounds) ? 1 : currentRound + 1;
+        const nextRound =
+          mode === "longBreak" || currentRound >= maxRounds
+            ? 1
+            : currentRound + 1;
         const durationSec = preset.focusMinutes * 60;
 
         set({
@@ -575,7 +592,11 @@ export const useTimerStore = create<TimerState>()(
         if (!state) return;
 
         // Clamp stored round to valid range [1, 4] so no user remains stuck at 4 or 5
-        if (!state.currentRound || state.currentRound < 1 || state.currentRound > 4) {
+        if (
+          !state.currentRound ||
+          state.currentRound < 1 ||
+          state.currentRound > 4
+        ) {
           state.currentRound = 1;
         }
 

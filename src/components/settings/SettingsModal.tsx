@@ -1,6 +1,7 @@
 import React from 'react';
 import { Volume2, Monitor, Bell, Palette, RotateCcw } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useGamifyStore } from '../../store/useGamifyStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 
@@ -158,7 +159,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             {themes.map((t) => (
               <button
                 key={t.id}
-                onClick={() => setTheme(t.id)}
+                onClick={() => {
+                  setTheme(t.id);
+                  const themeItemId = t.id === 'default' ? 'theme-cyber' : `theme-${t.id}`;
+                  useGamifyStore.setState((s) => ({
+                    shopItems: s.shopItems.map((item) =>
+                      item.category === 'theme'
+                        ? { ...item, equipped: item.id === themeItemId }
+                        : item
+                    ),
+                  }));
+                }}
                 className={`p-2 border text-left cursor-pointer transition-all flex items-center gap-2 ${
                   theme === t.id
                     ? 'border-[#00f0ff] bg-[#241a3d] text-white font-bold'

@@ -38,6 +38,7 @@ interface GoalState {
   // Day-change auto refresh & manual refresh
   checkAndRolloverDailyGoals: () => void;
   resetDailyGoalsToToday: () => void;
+  resetSingleGoalProgress: (goalId: string) => void;
 }
 
 export const useGoalStore = create<GoalState>()(
@@ -46,7 +47,7 @@ export const useGoalStore = create<GoalState>()(
       identities: DEFAULT_IDENTITIES,
       goals: DEFAULT_GOALS,
       activeIdentityId: DEFAULT_IDENTITIES[0]?.id || "",
-      activeGoalId: DEFAULT_GOALS[0]?.id || null,
+      activeGoalId: null,
 
       setActiveIdentityId: (id) => {
         soundFx.playClick();
@@ -160,7 +161,7 @@ export const useGoalStore = create<GoalState>()(
         }));
       },
 
-      recordSessionProgress: (identityId, durationMinutes, specificGoalId) => {
+      recordSessionProgress: (_identityId, durationMinutes, specificGoalId) => {
         const todayStr = getTodayDateString();
 
         set((state) => ({
@@ -170,16 +171,9 @@ export const useGoalStore = create<GoalState>()(
             if (goal.period !== "daily") return goal;
 
             // CRITICAL FIX: If specificGoalId is provided, ONLY update THAT specific goal!
-            // Never bleed minutes/sessions into other goals under the same identity!
-            let isRelevant = false;
-            if (specificGoalId) {
-              isRelevant = goal.id === specificGoalId;
-            } else {
-              // Only fallback to identity if NO specific goal was targeted
-              isRelevant = goal.identityId === identityId && (!goal.date || goal.date === todayStr);
-            }
-
-            if (!isRelevant) return goal;
+            // If NO specificGoalId is provided (e.g. user is studying without selecting a goal),
+            // NEVER bleed minutes/sessions into unrelated daily goals!
+            if (!specificGoalId || goal.id !== specificGoalId) return goal;
 
             const nextMinutes = goal.currentMinutes + durationMinutes;
             const nextSessions = goal.currentSessions + 1;
@@ -257,6 +251,25 @@ export const useGoalStore = create<GoalState>()(
           }),
         }));
       },
+
+      resetSingleGoalProgress: (goalId: string) => {
+        soundFx.playClick();
+        const todayStr = getTodayDateString();
+        set((state) => ({
+          goals: state.goals.map((g) => {
+            if (g.id === goalId) {
+              return {
+                ...g,
+                currentMinutes: 0,
+                currentSessions: 0,
+                completed: false,
+                date: todayStr,
+              };
+            }
+            return g;
+          }),
+        }));
+      },
     }),
     {
       name: "pixel-pomodoro-goals",
@@ -273,13 +286,6 @@ export const useGoalStore = create<GoalState>()(
           }
           return g;
         });
-
-        if (!state.activeGoalId && state.goals.length > 0) {
-          const firstDaily = state.goals.find(
-            (g) => g.period === "daily" && !g.completed,
-          );
-          state.activeGoalId = firstDaily?.id || state.goals[0]?.id || null;
-        }
       },
     },
   ),

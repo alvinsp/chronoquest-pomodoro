@@ -7,6 +7,7 @@ import { DEFAULT_BADGES, DEFAULT_SHOP_ITEMS, DEFAULT_QUESTS } from '../utils/def
 import { DEFAULT_BOSSES } from '../utils/bosses';
 import { calculateTargetXp, getTitleForLevel } from '../utils/levelCalculator';
 import { soundFx } from '../audio/synthAudio';
+import { useSettingsStore } from './useSettingsStore';
 
 interface GamifyState {
   hero: UserHero;
@@ -270,8 +271,15 @@ export const useGamifyStore = create<GamifyState>()(
           if (item.category === 'pet') heroUpdates.petId = itemId;
 
           if (item.category === 'theme') {
-            const themeKey = itemId.replace('theme-', '');
-            document.documentElement.setAttribute('data-theme', themeKey);
+            const themeKey = itemId === 'theme-cyber' ? 'default' : itemId.replace('theme-', '');
+            try {
+              useSettingsStore.getState().setTheme(themeKey);
+            } catch (err) {
+              console.warn('Could not sync theme to settings', err);
+            }
+            if (typeof document !== 'undefined') {
+              document.documentElement.setAttribute('data-theme', themeKey);
+            }
           }
 
           return {
@@ -310,6 +318,21 @@ export const useGamifyStore = create<GamifyState>()(
     }),
     {
       name: 'pixel-pomodoro-gamify',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const equippedTheme = state.shopItems?.find(
+          (i) => i.category === 'theme' && i.equipped
+        );
+        if (equippedTheme) {
+          const themeKey =
+            equippedTheme.id === 'theme-cyber'
+              ? 'default'
+              : equippedTheme.id.replace('theme-', '');
+          if (typeof document !== 'undefined') {
+            document.documentElement.setAttribute('data-theme', themeKey);
+          }
+        }
+      },
     }
   )
 );

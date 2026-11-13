@@ -110,6 +110,96 @@ body {
   font-family: 'VT323', monospace;
 }
 
+/* Global Theme Override Rules for Tailwind Hardcoded Hex Classes */
+[data-theme]:not([data-theme="default"]) .bg-\[\#181528\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#120f20\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#151224\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#130f20\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#130f21\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#1a162e\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#1e1736\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#171326\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#0a1e27\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#0f2129\] {
+  background-color: var(--bg-card) !important;
+}
+
+[data-theme]:not([data-theme="default"]) .bg-\[\#0d0c15\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#09080e\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#0e0c18\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#0b0a12\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#0f0d1a\] {
+  background-color: var(--bg-main) !important;
+}
+
+[data-theme]:not([data-theme="default"]) .bg-\[\#211c38\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#1c1830\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#241e3d\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#2b2545\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#261520\],
+[data-theme]:not([data-theme="default"]) .bg-\[\#241a3d\] {
+  background-color: var(--bg-card-sub) !important;
+}
+
+[data-theme]:not([data-theme="default"]) .border-\[\#2b2545\],
+[data-theme]:not([data-theme="default"]) .border-\[\#3b335c\],
+[data-theme]:not([data-theme="default"]) .border-\[\#2e2649\],
+[data-theme]:not([data-theme="default"]) .border-\[\#362f54\],
+[data-theme]:not([data-theme="default"]) .border-\[\#3b325c\],
+[data-theme]:not([data-theme="default"]) .border-\[\#201a35\],
+[data-theme]:not([data-theme="default"]) .border-\[\#292241\],
+[data-theme]:not([data-theme="default"]) .border-\[\#2f274a\] {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme]:not([data-theme="default"]) .text-\[\#f0edf6\],
+[data-theme]:not([data-theme="default"]) .text-\[\#fbf9ff\],
+[data-theme]:not([data-theme="default"]) .text-\[\#d3cbe7\] {
+  color: var(--text-main) !important;
+}
+
+[data-theme]:not([data-theme="default"]) .text-\[\#9f97ba\],
+[data-theme]:not([data-theme="default"]) .text-\[\#7e759b\],
+[data-theme]:not([data-theme="default"]) .text-\[\#7e769d\],
+[data-theme]:not([data-theme="default"]) .text-\[\#8e85aa\],
+[data-theme]:not([data-theme="default"]) .text-\[\#a097bd\],
+[data-theme]:not([data-theme="default"]) .text-\[\#645c81\] {
+  color: var(--text-muted) !important;
+}
+
+/* Specific GameBoy High-Contrast Aesthetics */
+[data-theme="gameboy"] {
+  --border-dark: #0f380f;
+}
+[data-theme="gameboy"] .text-\[\#00f0ff\],
+[data-theme="gameboy"] .text-\[\#ffd700\],
+[data-theme="gameboy"] .text-\[\#ff0055\],
+[data-theme="gameboy"] .text-\[\#b388ff\] {
+  color: #0f380f !important;
+}
+[data-theme="gameboy"] .border-\[\#00f0ff\],
+[data-theme="gameboy"] .border-\[\#ffd700\],
+[data-theme="gameboy"] .border-\[\#ff0055\] {
+  border-color: #0f380f !important;
+}
+
+/* Amber CRT Glow Specifics */
+[data-theme="amber"] .text-\[\#00f0ff\],
+[data-theme="amber"] .text-\[\#b388ff\] {
+  color: #ffcf40 !important;
+}
+[data-theme="amber"] .border-\[\#00f0ff\] {
+  border-color: #ffb000 !important;
+}
+
+/* Sakura Specifics */
+[data-theme="sakura"] .text-\[\#00f0ff\] {
+  color: #b388ff !important;
+}
+[data-theme="sakura"] .border-\[\#00f0ff\] {
+  border-color: #ff7ebb !important;
+}
+
 /* Pixel Card & Borders */
 .pixel-border {
   border: 4px solid var(--border-dark);

@@ -18,7 +18,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const tabs = [
     { id: 'timer' as const, label: 'Fokus Timer', icon: <Timer size={16} /> },
     { id: 'goals' as const, label: 'Identitas & Goal', icon: <Target size={16} /> },
-    { id: 'stats' as const, label: 'Statistik & Heatmap', icon: <BarChart2 size={16} /> },
+    { id: 'stats' as const, label: 'Statistik & Map', icon: <BarChart2 size={16} /> },
     {
       id: 'quests' as const,
       label: 'Quest Board',
