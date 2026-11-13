@@ -3,27 +3,19 @@ import {
   LogIn,
   LogOut,
   CheckCircle,
-  ShieldCheck,
-  Sparkles,
-  AlertCircle,
-  Smartphone,
-  Download,
-  Key,
-  Zap,
-  QrCode,
-  Copy,
-  Check,
   Cloud,
   CloudUpload,
   CloudDownload,
   Settings,
+  Download,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { useAuthStore, DEFAULT_GOOGLE_CLIENT_ID } from '../../store/useAuthStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { formatDatePretty } from '../../utils/formatters';
-import { generateSyncUrlAndQr } from '../../utils/syncManager';
 import { rehydrateAllStores } from '../../store/rehydrateStores';
 import {
   saveFirebaseConfig,
@@ -74,28 +66,19 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     isGoogleVerified,
     loginWithGoogleProfile,
     logout,
-    setGoogleClientId,
   } = useAuthStore();
 
   const { exportDataJson } = useStatsStore();
 
-  // Always fallback to DEFAULT_GOOGLE_CLIENT_ID so client_id is NEVER empty
-  const effectiveClientId = (googleClientId && googleClientId.trim() !== '')
-    ? googleClientId.trim()
-    : DEFAULT_GOOGLE_CLIENT_ID;
+  const effectiveClientId =
+    googleClientId && googleClientId.trim() !== ''
+      ? googleClientId.trim()
+      : DEFAULT_GOOGLE_CLIENT_ID;
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');
-  const [clientIdInput, setClientIdInput] = useState(effectiveClientId);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-
-  // Cross-device QR & Link Sync state
-  const [showQrSync, setShowQrSync] = useState(false);
-  const [qrImageUrl, setQrImageUrl] = useState('');
-  const [syncUrl, setSyncUrl] = useState('');
-  const [isTooLargeForQr, setIsTooLargeForQr] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   // Firebase Cloud Sync state
   const [isCloudConfiguredState, setIsCloudConfiguredState] = useState(isFirebaseConfigured());
@@ -109,27 +92,27 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   }, [isOpen]);
 
   const handlePushToCloud = async () => {
-    const email = user?.email || 'alvin1234putra@gmail.com';
+    if (!user?.email) return;
     setIsPushingCloud(true);
     setSyncSuccessMsg('');
-    const ok = await pushLocalDataToFirestore(email);
+    const ok = await pushLocalDataToFirestore(user.email);
     setIsPushingCloud(false);
     if (ok) {
-      setSyncSuccessMsg(`☁️ Seluruh data berhasil diunggah & aman di Firebase Cloud (${email})!`);
+      setSyncSuccessMsg(`☁️ Data berhasil diunggah & aman di Cloud (${user.email})!`);
     } else {
-      setSyncSuccessMsg('Gagal mengunggah ke Firebase. Pastikan aturan Firestore (security rules) mengizinkan tulis/write.');
+      setSyncSuccessMsg('Gagal mengunggah ke Firebase. Pastikan aturan Firestore mengizinkan tulis.');
     }
   };
 
   const handlePullFromCloud = async () => {
-    const email = user?.email || 'alvin1234putra@gmail.com';
+    if (!user?.email) return;
     setIsPullingCloud(true);
     setSyncSuccessMsg('');
-    const ok = await pullLatestDataFromFirestore(email);
+    const ok = await pullLatestDataFromFirestore(user.email);
     setIsPullingCloud(false);
     if (ok) {
       await rehydrateAllStores();
-      setSyncSuccessMsg('🎉 Berhasil menarik data terbaru dari Firebase Cloud!');
+      setSyncSuccessMsg('🎉 Berhasil menarik data terbaru dari Cloud!');
     } else {
       setSyncSuccessMsg('Belum ada data cadangan di Firebase Cloud untuk email ini.');
     }
@@ -149,7 +132,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
           return;
         }
       }
-      setSyncSuccessMsg('Format Firebase config tidak valid. Cukup tempelkan seluruh teks "const firebaseConfig = { ... };"');
+      setSyncSuccessMsg('Format Firebase config tidak valid. Cukup tempelkan objek "const firebaseConfig = { ... };"');
     } catch {
       setSyncSuccessMsg('Gagal memproses konfigurasi Firebase.');
     }
@@ -158,50 +141,12 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const handleDisconnectFirebase = () => {
     clearFirebaseConfig();
     setIsCloudConfiguredState(false);
-    setSyncSuccessMsg('Firebase config telah dihapus.');
+    setSyncSuccessMsg('Firebase config telah dinonaktifkan.');
   };
 
-  // Pre-generate the sync link on modal open
-  useEffect(() => {
-    if (!isOpen) return;
-    const email = user?.email || 'alvin1234putra@gmail.com';
-    generateSyncUrlAndQr(email)
-      .then((res) => {
-        setSyncUrl(res.syncUrl);
-        if (res.qrDataUrl) {
-          setQrImageUrl(res.qrDataUrl);
-          setIsTooLargeForQr(false);
-        } else {
-          setIsTooLargeForQr(true);
-        }
-      })
-      .catch((err) => {
-        console.warn('Failed to pregenerate sync url', err);
-      });
-  }, [isOpen, user?.email]);
-
-  const handleCopySyncLinkDirect = async () => {
-    try {
-      let targetUrl = syncUrl;
-      if (!targetUrl) {
-        const email = user?.email || 'alvin1234putra@gmail.com';
-        const res = await generateSyncUrlAndQr(email);
-        targetUrl = res.syncUrl;
-        setSyncUrl(res.syncUrl);
-      }
-      await navigator.clipboard.writeText(targetUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 3000);
-      setSyncSuccessMsg('🎉 Link berhasil disalin! Kirim via WA/Telegram ke HP-mu dan buka di browser HP.');
-    } catch {
-      setSyncSuccessMsg('Salin teks link dari kotak di bawah.');
-    }
-  };
-
-  // Dynamically ensure Google Identity Services script is loaded
+  // Google GIS script loader
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     if (!document.getElementById('google-gsi-script')) {
       const script = document.createElement('script');
       script.id = 'google-gsi-script';
@@ -212,7 +157,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     }
   }, []);
 
-  // Wait helper if GIS script is still loading
   const waitForGis = async (timeoutMs = 2000): Promise<boolean> => {
     if (window.google?.accounts?.oauth2) return true;
     const start = Date.now();
@@ -223,26 +167,12 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     return Boolean(window.google?.accounts?.oauth2);
   };
 
-  // Quick 1-click login for alvin1234putra@gmail.com
-  const handleFastLoginAlvin = () => {
-    loginWithGoogleProfile({
-      email: 'alvin1234putra@gmail.com',
-      name: 'Alvin Putra',
-      picture: `https://api.dicebear.com/7.x/pixel-art/svg?seed=alvin1234putra`,
-    });
-    useAuthStore.setState({ isGoogleVerified: true });
-    setSyncSuccessMsg('🎉 Berhasil masuk sebagai alvin1234putra@gmail.com! Seluruh datamu aman tersimpan.');
-  };
-
-  // Primary Google Login Handler: Works instantly with verified client_id
   const handleLaunchGoogleSignIn = async () => {
     setIsConnectingGoogle(true);
     setSyncSuccessMsg('');
 
-    // Wait briefly if GIS library is still loading
     await waitForGis(1500);
 
-    // Method 1: Use GIS Token Client if available
     if (window.google?.accounts?.oauth2) {
       try {
         const client = window.google.accounts.oauth2.initTokenClient({
@@ -263,7 +193,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                     id: profile.sub,
                   });
                   useAuthStore.setState({ isGoogleVerified: true });
-                  setSyncSuccessMsg(`🎉 Berhasil! Seluruh data telah dikunci ke Akun Google: ${profile.email}`);
+                  setSyncSuccessMsg(`🎉 Berhasil masuk dengan Akun Google: ${profile.email}`);
                 }
               } catch {
                 setSyncSuccessMsg('Gagal mengambil data profil Google.');
@@ -276,11 +206,10 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         client.requestAccessToken({ prompt: 'select_account' });
         return;
       } catch {
-        // Fallback to standard OAuth popup
+        // Fallback to popup
       }
     }
 
-    // Method 2: Universal OAuth2 Pop-up (Works on mobile and all browsers without iframe dependency)
     const redirectUri = window.location.origin;
     const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${effectiveClientId}&redirect_uri=${encodeURIComponent(
       redirectUri
@@ -298,12 +227,10 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     );
 
     if (!popup) {
-      // If popup was blocked by browser, redirect directly
       window.location.href = oauthUrl;
       return;
     }
 
-    // Poll popup window for redirect with token
     const pollTimer = setInterval(() => {
       try {
         if (!popup || popup.closed) {
@@ -333,7 +260,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                     id: profile.sub,
                   });
                   useAuthStore.setState({ isGoogleVerified: true });
-                  setSyncSuccessMsg(`🎉 Berhasil! Seluruh data telah dikunci ke Akun Google: ${profile.email}`);
+                  setSyncSuccessMsg(`🎉 Berhasil masuk dengan Google: ${profile.email}`);
                 }
                 setIsConnectingGoogle(false);
               })
@@ -343,7 +270,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
           }
         }
       } catch {
-        // Cross-origin restriction before redirect is normal
+        // Cross-origin restriction before redirect
       }
     }, 500);
   };
@@ -358,7 +285,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
       picture: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(inputEmail.trim())}`,
     });
 
-    setSyncSuccessMsg(`Data saat ini berhasil diikat ke profil: ${inputEmail}`);
+    setSyncSuccessMsg(`Masuk sebagai: ${inputEmail}`);
   };
 
   const handleDownloadBackup = () => {
@@ -370,238 +297,23 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
     a.download = `backup-pomodoro-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setSyncSuccessMsg('File cadangan berhasil di-download.');
+    setSyncSuccessMsg('File cadangan (.json) berhasil di-download.');
   };
 
-  const renderFirebaseCloudSync = () => (
-    <div className="p-4 bg-[#0d1626] border-2 border-[#00f0ff] space-y-3 shadow-[2px_2px_0px_#000]">
-      <div className="flex items-center justify-between gap-2 border-b border-[#1b2d49] pb-2">
-        <div className="flex items-center gap-2">
-          <Cloud size={16} className="text-[#00f0ff]" />
-          <h4 className="font-silkscreen text-xs font-bold text-[#00f0ff] uppercase">
-            Sinkronisasi Cloud Real-Time
-          </h4>
-        </div>
-        <span
-          className={`text-[9px] font-pixel px-2 py-0.5 border ${
-            isCloudConfiguredState
-              ? 'bg-[#00ff66]/20 text-[#00ff66] border-[#00ff66] font-bold'
-              : 'bg-[#ffd700]/20 text-[#ffd700] border-[#ffd700]'
-          }`}
-        >
-          {isCloudConfiguredState ? 'AKTIF ✓' : 'SETUP'}
-        </span>
-      </div>
-
-      {isCloudConfiguredState ? (
-        <div className="space-y-3">
-          <div className="p-2.5 bg-[#07101c] border border-[#1d324d] text-[11px] text-[#a9c2e2] leading-relaxed">
-            🟢 <strong>Semua data sudah otomatis tersinkron!</strong> Setiap kali kamu menyelesaikan sesi fokus Pomodoro, menaikkan level, atau memperbarui target harian, data langsung tersimpan di awan dan sinkron di Laptop & HP.
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handlePushToCloud}
-              disabled={isPushingCloud}
-              className="py-2.5 px-3 bg-[#00f0ff] hover:bg-[#33f3ff] active:bg-[#00ccde] text-black font-silkscreen font-bold text-xs border border-black flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_#000] transition-all"
-            >
-              <CloudUpload size={14} className={isPushingCloud ? 'animate-bounce' : ''} />
-              <span>{isPushingCloud ? 'Mengunggah...' : 'Sinkronkan Sekarang'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePullFromCloud}
-              disabled={isPullingCloud}
-              className="py-2.5 px-3 bg-[#152336] hover:bg-[#1f334e] active:bg-[#0e1927] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-            >
-              <CloudDownload size={14} className={isPullingCloud ? 'animate-bounce' : ''} />
-              <span>{isPullingCloud ? 'Menarik...' : 'Muat dari Cloud'}</span>
-            </button>
-          </div>
-
-          <div className="flex justify-between items-center pt-1 text-[10px] text-[#6d829e]">
-            <button
-              type="button"
-              onClick={() => {
-                const raw = localStorage.getItem('chronoquest_firebase_config');
-                if (raw) {
-                  navigator.clipboard.writeText(raw);
-                  setSyncSuccessMsg('✓ Konfigurasi Firebase disalin ke clipboard! Kirim via WA/Telegram ke HP-mu.');
-                }
-              }}
-              className="text-[#00f0ff] hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <Copy size={11} /> Salin Config untuk HP
-            </button>
-            <button
-              type="button"
-              onClick={handleDisconnectFirebase}
-              className="text-[#ff5555] hover:underline cursor-pointer"
-            >
-              Putuskan Firebase
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          <p className="text-[11px] text-[#b4c8e2] leading-relaxed">
-            Hubungkan ke Firebase gratis agar <strong>Laptop & HP kamu otomatis sinkron sendiri</strong> tanpa perlu salin-salin link.
-          </p>
-
-          {!showFirebaseSetup ? (
-            <button
-              type="button"
-              onClick={() => setShowFirebaseSetup(true)}
-              className="w-full py-2 px-3 bg-[#1c2c44] hover:bg-[#283e60] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Settings size={13} />
-              <span>Buka Form Konfigurasi Firebase</span>
-            </button>
-          ) : (
-            <div className="p-3 bg-[#080d17] border border-[#233754] space-y-2.5">
-              <div className="text-[10px] text-[#90a8c9] space-y-1 leading-relaxed">
-                <span className="font-bold text-[#ffd700] block">Cara mendapatkan Firebase Config (Gratis 2 Menit):</span>
-                <ol className="list-decimal list-inside space-y-0.5">
-                  <li>Buka <strong>console.firebase.google.com</strong></li>
-                  <li>Pilih projectmu (atau buat baru, misal project <code className="text-[#00f0ff]">1069804020855</code>).</li>
-                  <li>Di menu <strong>Build → Firestore Database</strong>, klik <em>Create Database</em> (pilih Test Mode).</li>
-                  <li>Di <em>Project Settings</em> (ikon gir), pilih <strong>Web App (&lt;/&gt;)</strong>, lalu salin blok <code className="text-[#00f0ff]">const firebaseConfig = &#123; ... &#125;;</code></li>
-                </ol>
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-[#ffd700] font-silkscreen mb-1">
-                  Tempelkan objek firebaseConfig di sini:
-                </label>
-                <textarea
-                  rows={4}
-                  value={firebaseConfigInput}
-                  onChange={(e) => setFirebaseConfigInput(e.target.value)}
-                  placeholder={`const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  projectId: "chronoquest",\n  ...\n};`}
-                  className="w-full bg-[#0a121e] border border-[#2f496e] p-2 text-[10px] font-mono text-[#00f0ff] outline-none resize-none"
-                />
-              </div>
-
-              {/* Live Detection Preview */}
-              {detectedFirebaseConfig ? (
-                <div className="p-2 bg-[#052e16] border border-[#00ff66] text-[10px] text-[#00ff66] space-y-0.5">
-                  <div className="font-bold flex items-center gap-1">
-                    <Check size={12} /> Konfigurasi Firebase Terdeteksi:
-                  </div>
-                  <div className="text-[10px] text-[#b3e6c9]">
-                    Project ID: <span className="font-mono text-white">{detectedFirebaseConfig.projectId}</span>
-                  </div>
-                  <div className="text-[10px] text-[#b3e6c9]">
-                    API Key: <span className="font-mono text-white">{detectedFirebaseConfig.apiKey.slice(0, 10)}...</span>
-                  </div>
-                </div>
-              ) : (
-                firebaseConfigInput.trim() !== '' && (
-                  <div className="p-2 bg-[#2d1215] border border-[#ff4444] text-[10px] text-[#ff8888]">
-                    ⚠️ Belum mendeteksi apiKey atau projectId. Pastikan teks mencakup apiKey dan projectId.
-                  </div>
-                )
-              )}
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowFirebaseSetup(false)}
-                  className="px-2.5 py-1 text-[10px] text-[#869ab3] font-silkscreen hover:text-white"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveFirebaseConfigJson}
-                  className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs border border-black cursor-pointer hover:bg-[#33ff85]"
-                >
-                  Simpan & Hubungkan Firebase
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderCrossDeviceSync = () => (
-    <details className="p-3 bg-[#0c1420] border-2 border-[#1c304a] text-xs font-silkscreen group shadow-[2px_2px_0px_#000]">
-      <summary className="cursor-pointer text-[#8ea3bf] hover:text-[#00f0ff] text-xs font-bold flex items-center justify-between select-none">
-        <div className="flex items-center gap-2">
-          <Smartphone size={15} className="text-[#00f0ff]" />
-          <span>Cadangan Manual: Salin Link / QR Code (Jika Offline)</span>
-        </div>
-        <span className="text-[10px] text-[#667a94] group-open:rotate-180 transition-transform">
-          ▼
-        </span>
-      </summary>
-
-      <div className="pt-3 space-y-2.5 border-t border-[#1a2c44] mt-2">
-        <p className="text-[10px] text-[#9bb0cf] leading-relaxed">
-          Gunakan tombol di bawah jika kamu ingin menyalin data secara offline atau mengirim link langsung ke browser HP tanpa cloud.
-        </p>
-
-        <button
-          type="button"
-          onClick={handleCopySyncLinkDirect}
-          className="w-full py-2.5 px-3 bg-[#00ff66] hover:bg-[#33ff85] active:bg-[#00cc52] text-black font-silkscreen font-bold text-xs border border-black shadow-[2px_2px_0px_#000] flex items-center justify-center gap-2 cursor-pointer transition-all"
-        >
-          {copiedLink ? <Check size={15} /> : <Copy size={15} />}
-          <span>{copiedLink ? '✓ LINK TERSALIN KE CLIPBOARD!' : '📋 Salin Link Sinkronisasi HP (1-Klik)'}</span>
-        </button>
-
-        <input
-          type="text"
-          readOnly
-          value={syncUrl}
-          placeholder="Membuat tautan..."
-          onClick={(e) => (e.target as HTMLInputElement).select()}
-          className="w-full bg-[#080e18] border border-[#233857] p-1.5 text-[10px] text-[#00f0ff] font-mono outline-none cursor-pointer"
-        />
-
-        <div className="pt-1">
-          {!showQrSync ? (
-            <button
-              type="button"
-              onClick={() => setShowQrSync(true)}
-              className="text-[10px] text-[#00f0ff] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <QrCode size={12} /> Tampilkan QR Code untuk Scan Kamera HP
-            </button>
-          ) : (
-            <div className="p-2.5 bg-[#080e18] border border-[#1c2e4a] flex items-center gap-3">
-              {qrImageUrl && !isTooLargeForQr ? (
-                <>
-                  <div className="p-1 bg-white border border-black shrink-0">
-                    <img src={qrImageUrl} alt="QR Code" className="w-20 h-20" />
-                  </div>
-                  <p className="text-[10px] text-[#d6e2f4] leading-relaxed">
-                    Arahkan kamera HP ke QR Code untuk menyalin progres.
-                  </p>
-                </>
-              ) : (
-                <p className="text-[10px] text-[#ffd700]">
-                  Gunakan tombol Salin Link di atas.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </details>
-  );
-
   return (
-    <PixelModal isOpen={isOpen} onClose={onClose} title="🔐 Akun Google & Cloud Sync" maxWidth="md">
+    <PixelModal isOpen={isOpen} onClose={onClose} title="🔐 Akun & Sinkronisasi Cloud" maxWidth="md">
       <div className="space-y-4 text-xs font-silkscreen">
+        {syncSuccessMsg && (
+          <div className="p-2.5 bg-[#052e16] border border-[#00ff66] text-[#00ff66] flex items-center gap-2">
+            <CheckCircle size={15} />
+            <span>{syncSuccessMsg}</span>
+          </div>
+        )}
+
         {user ? (
-          /* User is Logged In */
+          /* User Logged In */
           <div className="space-y-4">
-            {/* Account Card */}
+            {/* Account Profile Card */}
             <div className="p-3.5 bg-[#0f0c1b] border-2 border-[#00ff66] flex items-center gap-3 shadow-[2px_2px_0px_#000]">
               <div className="w-11 h-11 border-2 border-black bg-[#231d37] overflow-hidden shrink-0 flex items-center justify-center">
                 {user.picture ? (
@@ -638,67 +350,76 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               </div>
             </div>
 
-            {/* If user logged in via email only, provide one-click Upgrade to Google GIS button */}
-            {!isGoogleVerified && (
-              <div className="p-3.5 bg-[#171329] border-2 border-[#ffd700] space-y-3">
-                <div className="flex items-start gap-2">
-                  <Key size={16} className="text-[#ffd700] shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="font-bold text-[#ffd700] text-xs">
-                      Tautkan ke Akun Google Resmi (Client ID GIS)
-                    </h5>
-                    <p className="text-[11px] text-[#d3cbe7] mt-0.5 leading-relaxed">
-                      Kamu saat ini masuk via email. Klik tombol di bawah untuk memverifikasikannya dengan Google ID. <strong>Data level, EXP, koin, dan targetmu yang sekarang tidak akan hilang!</strong>
-                    </p>
-                  </div>
+            {/* Cloud Realtime Status & Manual Trigger */}
+            <div className="p-3.5 bg-[#0d1626] border-2 border-[#00f0ff] space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1b2d49] pb-2">
+                <div className="flex items-center gap-2">
+                  <Cloud size={16} className="text-[#00f0ff]" />
+                  <h4 className="font-silkscreen text-xs font-bold text-[#00f0ff] uppercase">
+                    Status Sinkronisasi Real-Time
+                  </h4>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleLaunchGoogleSignIn}
-                  disabled={isConnectingGoogle}
-                  className="w-full py-3 px-4 bg-white hover:bg-neutral-100 active:bg-neutral-200 text-neutral-800 font-bold border-2 border-black shadow-[3px_3px_0px_#000] flex items-center justify-center gap-3 cursor-pointer text-xs font-silkscreen transition-all"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>{isConnectingGoogle ? 'Membuka Google...' : 'Tautkan Sekarang dengan Google ID'}</span>
-                </button>
+                <span className="text-[9px] font-pixel px-2 py-0.5 bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66] font-bold">
+                  {isCloudConfiguredState ? 'AKTIF ✓' : 'STANDBY'}
+                </span>
               </div>
-            )}
 
-            {/* Sync Alert Message */}
-            {syncSuccessMsg && (
-              <div className="p-2.5 bg-[#052e16] border border-[#00ff66] text-[#00ff66] flex items-center gap-2">
-                <CheckCircle size={15} />
-                <span>{syncSuccessMsg}</span>
-              </div>
-            )}
+              <p className="text-[11px] text-[#a9c2e2] leading-relaxed">
+                🟢 <strong>Semua data tersinkron otomatis!</strong> Setiap kali kamu menyelesaikan sesi fokus Pomodoro, menaikkan level, atau menyelesaikan target, data langsung sinkron antara Laptop & HP.
+              </p>
 
-            {/* Firebase Cloud Sync (Real-time Multi-device Sync) */}
-            {renderFirebaseCloudSync()}
+              {isCloudConfiguredState && (
+                <>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handlePushToCloud}
+                      disabled={isPushingCloud}
+                      className="py-2 px-3 bg-[#00f0ff] hover:bg-[#33f3ff] text-black font-silkscreen font-bold text-xs border border-black flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_#000] transition-all"
+                    >
+                      <CloudUpload size={13} className={isPushingCloud ? 'animate-bounce' : ''} />
+                      <span>{isPushingCloud ? 'Mengunggah...' : 'Sinkronkan Sekarang'}</span>
+                    </button>
 
-            {/* Cross-Device Sync (HP ⇄ Laptop) */}
-            {renderCrossDeviceSync()}
+                    <button
+                      type="button"
+                      onClick={handlePullFromCloud}
+                      disabled={isPullingCloud}
+                      className="py-2 px-3 bg-[#152336] hover:bg-[#1f334e] text-[#00f0ff] font-silkscreen font-bold text-xs border border-[#00f0ff] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <CloudDownload size={13} className={isPullingCloud ? 'animate-bounce' : ''} />
+                      <span>{isPullingCloud ? 'Menarik...' : 'Muat dari Cloud'}</span>
+                    </button>
+                  </div>
 
-            {/* Safety Backup Download Button */}
+                  <div className="flex justify-end pt-0.5">
+                    <button
+                      type="button"
+                      onClick={handleDisconnectFirebase}
+                      className="text-[10px] text-[#ff6666] hover:underline cursor-pointer"
+                    >
+                      Putuskan Firebase
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Offline Backup File */}
             <div className="p-2.5 bg-[#0a0f17] border border-[#1a2d45] flex items-center justify-between">
               <span className="text-[10px] text-[#869ab3]">
-                Cadangan Mandiri (Offline File):
+                Cadangan File Offline (.json):
               </span>
               <button
                 type="button"
                 onClick={handleDownloadBackup}
                 className="text-[10px] font-silkscreen text-[#00f0ff] hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <Download size={12} /> Download Backup JSON
+                <Download size={12} /> Download Backup
               </button>
             </div>
 
-            {/* Logout button */}
+            {/* Logout */}
             <div className="pt-2 flex justify-between items-center border-t border-[#2b2545]">
               <span className="text-[10px] text-[#71688d]">
                 Data aman tersimpan untuk: {user.email}
@@ -710,53 +431,26 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             </div>
           </div>
         ) : (
-          /* User is NOT Logged In */
+          /* User Not Logged In */
           <div className="space-y-4">
             <div className="p-3 bg-[#130f21] border-2 border-[#ffd700] flex items-start gap-2.5">
               <Sparkles size={18} className="text-[#ffd700] shrink-0 mt-0.5" />
               <p className="text-xs text-[#d3cbe7] leading-relaxed">
-                <strong>Data kamu saat ini TIDAK AKAN HILANG.</strong> Saat kamu login, seluruh progres level, statistik, target harian, dan catatanmu otomatis dikunci ke Akun Google-mu!
+                <strong>Data kamu saat ini TIDAK AKAN HILANG.</strong> Masuk dengan Akun Google untuk mengunci seluruh progres level, statistik, target harian, dan catatanmu ke cloud secara otomatis.
               </p>
             </div>
 
-            {/* Quick 1-Click Button for Alvin */}
-            <div className="p-4 bg-[#171329] border-2 border-[#00ff66] space-y-2 shadow-[2px_2px_0px_#000]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span className="text-[10px] text-[#00ff66] font-pixel flex items-center gap-1">
-                    <Zap size={11} /> AKUN GOOGLE UTAMA
-                  </span>
-                  <p className="font-silkscreen text-xs font-bold text-[#f0edf6] mt-0.5">
-                    alvin1234putra@gmail.com
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleFastLoginAlvin}
-                  className="pixel-btn px-4 py-2 bg-[#00ff66] hover:bg-[#33ff85] active:bg-[#00cc52] text-black font-silkscreen text-xs font-bold border-2 border-black cursor-pointer shadow-[2px_2px_0px_#000] shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5"
-                >
-                  <Zap size={13} />
-                  <span>Masuk Cepat Langsung</span>
-                </button>
-              </div>
-              <p className="text-[10px] text-[#a9a1c6] leading-relaxed">
-                ✓ 100% Mengamankan seluruh data level, statistik, target harian & catatan ke email ini. Bisa dibuka di Laptop & HP tanpa popup bermasalah.
-              </p>
-            </div>
-
-            {/* Official Google Sign-In Button */}
-            <div className="p-4 bg-[#120f20] border-2 border-[#00f0ff] flex flex-col items-center justify-center space-y-3">
-              <div className="flex items-center gap-1.5 text-xs text-[#00f0ff] font-bold uppercase">
-                <Smartphone size={14} />
-                <span>Masuk Resmi dengan Google (Laptop & HP)</span>
-              </div>
+            {/* Official Google Sign-In */}
+            <div className="p-5 bg-[#120f20] border-2 border-[#00f0ff] flex flex-col items-center justify-center space-y-3 shadow-[2px_2px_0px_#000]">
+              <span className="text-xs text-[#00f0ff] font-bold uppercase tracking-wider">
+                Masuk Resmi dengan Google
+              </span>
 
               <button
                 type="button"
                 onClick={handleLaunchGoogleSignIn}
                 disabled={isConnectingGoogle}
-                className="w-full max-w-xs py-3 px-4 bg-white hover:bg-neutral-100 active:bg-neutral-200 text-neutral-800 font-bold border-3 border-black shadow-[3px_3px_0px_#000] flex items-center justify-center gap-3 cursor-pointer text-xs sm:text-sm font-silkscreen transition-all"
+                className="w-full max-w-xs py-3 px-4 bg-white hover:bg-neutral-100 active:bg-neutral-200 text-neutral-800 font-bold border-2 border-black shadow-[3px_3px_0px_#000] flex items-center justify-center gap-3 cursor-pointer text-xs sm:text-sm font-silkscreen transition-all"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -767,40 +461,24 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
                 <span>{isConnectingGoogle ? 'Membuka Google...' : 'Sign in with Google'}</span>
               </button>
 
-              <p className="text-[10px] text-[#786f94] text-center">
-                Membuka popup resmi Google GIS.
+              <p className="text-[10px] text-[#786f94]">
+                Sinkron otomatis di Laptop dan Browser HP.
               </p>
             </div>
 
-            {/* Sync Alert Message if any */}
-            {syncSuccessMsg && (
-              <div className="p-2.5 bg-[#052e16] border border-[#00ff66] text-[#00ff66] flex items-center gap-2">
-                <CheckCircle size={15} />
-                <span>{syncSuccessMsg}</span>
-              </div>
-            )}
-
-            {/* Firebase Cloud Sync (Real-time Multi-device Sync) */}
-            {renderFirebaseCloudSync()}
-
-            {/* Cross-Device Sync (HP ⇄ Laptop) */}
-            {renderCrossDeviceSync()}
-
-            {/* Fast Google Login by Email Form */}
+            {/* Email Login Form */}
             <form onSubmit={handleCustomLogin} className="p-4 bg-[#120f20] border-2 border-[#2b2545] space-y-3">
               <h4 className="font-pixel text-xs text-[#ffd700] uppercase flex items-center gap-1.5">
                 <LogIn size={13} />
-                Atau Masuk dengan Email Lain
+                Atau Masuk dengan Email
               </h4>
 
               <div>
-                <label className="block text-xs text-[#9f97ba] mb-1">
-                  Email Akun Google:
-                </label>
+                <label className="block text-xs text-[#9f97ba] mb-1">Email:</label>
                 <input
                   type="email"
                   required
-                  placeholder="contoh: nama.kamu@gmail.com"
+                  placeholder="contoh: nama@gmail.com"
                   value={inputEmail}
                   onChange={(e) => setInputEmail(e.target.value)}
                   className="w-full bg-[#0d0c15] border-2 border-[#3b335c] p-2 text-xs text-[#f0edf6] font-medium outline-none focus:border-[#00f0ff]"
@@ -808,12 +486,10 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
               </div>
 
               <div>
-                <label className="block text-xs text-[#9f97ba] mb-1">
-                  Nama Panggilan / Username:
-                </label>
+                <label className="block text-xs text-[#9f97ba] mb-1">Nama Panggilan:</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Alvin"
+                  placeholder="Nama / Username"
                   value={inputName}
                   onChange={(e) => setInputName(e.target.value)}
                   className="w-full bg-[#0d0c15] border-2 border-[#3b335c] p-2 text-xs text-[#f0edf6] font-medium outline-none focus:border-[#00f0ff]"
@@ -822,37 +498,61 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
 
               <PixelButton type="submit" variant="primary" size="md" fullWidth>
                 <ShieldCheck size={15} />
-                <span>Simpan & Masuk dengan Email Ini</span>
+                <span>Masuk dengan Email</span>
               </PixelButton>
             </form>
 
-            {/* Google OAuth Client ID Configuration Info */}
-            <div className="p-3 bg-[#0d0c15] border border-[#261f3a] space-y-2 text-[11px]">
-              <div className="flex items-center gap-1 text-[#ffd700] font-bold">
-                <AlertCircle size={13} />
-                <span>Google Client ID Aktif:</span>
+            {/* Firebase Config Setup Toggle (Only if not configured) */}
+            {!isCloudConfiguredState && (
+              <div className="p-3 bg-[#0d1626] border border-[#1b2d49] space-y-2">
+                {!showFirebaseSetup ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowFirebaseSetup(true)}
+                    className="w-full py-1.5 text-[11px] text-[#00f0ff] font-silkscreen hover:underline flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Settings size={12} />
+                    <span>Setup Firebase Cloud Database (Opsional)</span>
+                  </button>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <label className="block text-[10px] text-[#ffd700] font-silkscreen">
+                      Tempelkan const firebaseConfig:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={firebaseConfigInput}
+                      onChange={(e) => setFirebaseConfigInput(e.target.value)}
+                      placeholder={`const firebaseConfig = {\n  apiKey: "AIza...",\n  projectId: "..."\n};`}
+                      className="w-full bg-[#0a121e] border border-[#2f496e] p-2 text-[10px] font-mono text-[#00f0ff] outline-none resize-none"
+                    />
+
+                    {detectedFirebaseConfig && (
+                      <div className="text-[10px] text-[#00ff66]">
+                        ✓ Terdeteksi: {detectedFirebaseConfig.projectId}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowFirebaseSetup(false)}
+                        className="px-2 py-0.5 text-[10px] text-[#869ab3]"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveFirebaseConfigJson}
+                        className="px-3 py-1 bg-[#00ff66] text-black font-silkscreen font-bold text-xs"
+                      >
+                        Simpan
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <input
-                type="text"
-                value={clientIdInput}
-                onChange={(e) => setClientIdInput(e.target.value)}
-                placeholder="xxxx.apps.googleusercontent.com"
-                className="w-full bg-[#151224] border border-[#3b335c] p-1.5 text-[10px] text-[#00f0ff] outline-none font-mono"
-              />
-              <div className="flex justify-between items-center text-[10px] text-[#71688d]">
-                <span>Siap untuk Desktop & HP Mobile</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGoogleClientId(clientIdInput.trim());
-                    setSyncSuccessMsg('Client ID tersimpan.');
-                  }}
-                  className="px-2 py-0.5 bg-[#211c38] text-[#ffd700] border border-[#3b335c] hover:border-[#ffd700] cursor-pointer text-[10px]"
-                >
-                  Update Client ID
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>

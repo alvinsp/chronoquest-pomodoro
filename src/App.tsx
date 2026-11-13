@@ -42,7 +42,7 @@ import {
   applyCloudDataToLocalStorage,
   isFirebaseConfigured,
 } from './services/firebase';
-import { Trophy, Sparkles } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<MainTabType>('timer');
@@ -57,7 +57,7 @@ export function App() {
 
   const { status, mode, timeRemaining, tick } = useTimerStore();
   const { theme, crtScanlines } = useSettingsStore();
-  const { hero, quests, recentLevelUp, clearLevelUpAlert } = useGamifyStore();
+  const { hero, recentLevelUp, clearLevelUpAlert } = useGamifyStore();
 
   // Set theme data-attribute on root
   useEffect(() => {
@@ -231,8 +231,6 @@ export function App() {
     return () => window.removeEventListener('keydown', handleGlobalKey);
   }, []);
 
-  const unclaimedQuestsCount = quests.filter((q) => q.completed && !q.claimed).length;
-
   return (
     <div className={`min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] flex flex-col ${crtScanlines ? 'crt-overlay crt-vignette' : ''}`}>
       {/* Top Header */}
@@ -245,7 +243,6 @@ export function App() {
       <NavigationBar
         activeTab={activeTab}
         onChangeTab={setActiveTab}
-        questBadgeCount={unclaimedQuestsCount}
       />
 
       {/* Main Content Area */}
@@ -322,89 +319,6 @@ export function App() {
           </div>
         )}
 
-        {/* Tab 4: QUEST BOARD */}
-        {activeTab === 'quests' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="font-pixel text-base text-[#ffd700]">GUILD ADVENTURE BOARD</h2>
-                <p className="font-silkscreen text-xs text-[#9f97ba] mt-1">
-                  Selesaikan misi harian dan kumpulkan lencana kehormatan.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsBadgesOpen(true)}
-                className="pixel-btn px-3 py-2 bg-[#211c38] text-[#00f0ff] border-2 border-black font-silkscreen text-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles size={14} /> Lihat Semua Lencana (Badges)
-              </button>
-            </div>
-
-            {/* Inlined Quests preview */}
-            <div className="bg-[#181528] pixel-border border-4 border-black p-5">
-              <h3 className="font-silkscreen text-sm font-bold text-[#f0edf6] mb-4">
-                Daftar Quest Aktif Hari Ini:
-              </h3>
-              <div className="space-y-3">
-                {quests.map((q) => (
-                  <div
-                    key={q.id}
-                    className="p-3 bg-[#130f21] border-2 border-[#2c2447] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                  >
-                    <div>
-                      <h4 className="font-silkscreen text-xs font-bold text-[#f0edf6]">
-                        {q.title}
-                      </h4>
-                      <p className="text-xs text-[#9f97ba] mt-0.5">{q.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-pixel text-[10px] text-[#e0aaff]">+{q.rewardXp} XP</span>
-                      <span className="font-pixel text-[10px] text-[#ffd700]">+{q.rewardGold} G</span>
-                      <button
-                        onClick={() => setIsQuestsOpen(true)}
-                        className="pixel-btn px-2.5 py-1 bg-[#ff0055] text-white text-[10px] font-silkscreen border border-black"
-                      >
-                        Buka Detail
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 5: PIXEL ARMORY */}
-        {activeTab === 'shop' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="font-pixel text-base text-[#ff0055]">CHRONO ARMORY & SHOP</h2>
-                <p className="font-silkscreen text-xs text-[#9f97ba] mt-1">
-                  Tukarkan koin emas dari hasil fokus untuk membuka sprite avatar dan peliharaan baru.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsShopOpen(true)}
-                className="pixel-btn px-4 py-2 bg-[#ffd700] text-black border-2 border-black font-silkscreen text-xs font-bold cursor-pointer"
-              >
-                Kunjungi Toko Lengkap
-              </button>
-            </div>
-
-            <div className="bg-[#181528] pixel-border border-4 border-black p-6 text-center">
-              <p className="text-sm font-silkscreen text-[#f0edf6] mb-4">
-                Kamu memiliki <strong className="text-[#ffd700] font-pixel">{hero.gold} GOLD</strong> di kantungmu.
-              </p>
-              <button
-                onClick={() => setIsShopOpen(true)}
-                className="pixel-btn px-6 py-3 bg-[#ff0055] text-white font-pixel text-xs border-2 border-black cursor-pointer shadow-[3px_3px_0px_#000]"
-              >
-                BUKA KATALOG ARMORY SEKARANG
-              </button>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* Footer */}
