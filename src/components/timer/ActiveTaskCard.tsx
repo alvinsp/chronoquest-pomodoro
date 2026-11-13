@@ -1,13 +1,24 @@
-import React from 'react';
-import { Sparkles, Quote, Zap, RefreshCw } from 'lucide-react';
-import { useTimerStore } from '../../store/useTimerStore';
-import { useGoalStore } from '../../store/useGoalStore';
+import { Quote, RefreshCw, Sparkles, Zap } from "lucide-react";
+import React from "react";
+import { useGoalStore } from "../../store/useGoalStore";
+import { useTimerStore } from "../../store/useTimerStore";
 
 export const ActiveTaskCard: React.FC = () => {
-  const { taskTitle, setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
-  const { identities, goals, activeIdentityId, setActiveIdentityId, activeGoalId } = useGoalStore();
+  const {
+    taskTitle,
+    setTaskTitle,
+    setActiveIdentityId: setTimerIdentityId,
+  } = useTimerStore();
+  const {
+    identities,
+    goals,
+    activeIdentityId,
+    setActiveIdentityId,
+    activeGoalId,
+  } = useGoalStore();
 
-  const currentIdentity = identities.find((i) => i.id === activeIdentityId) || identities[0];
+  const currentIdentity =
+    identities.find((i) => i.id === activeIdentityId) || identities[0];
   const activeGoal = goals.find((g) => g.id === activeGoalId);
 
   const handleSyncWithGoalTitle = () => {
@@ -24,7 +35,10 @@ export const ActiveTaskCard: React.FC = () => {
         <div className="flex-1">
           <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <Zap size={13} className="text-[#00f0ff]" />
+              <Zap
+                size={13}
+                className="text-[#00f0ff]"
+              />
               Judul Sesi Fokus (Dicatat di Riwayat Sesi):
             </span>
             {activeGoal && taskTitle !== activeGoal.title && (
@@ -46,7 +60,7 @@ export const ActiveTaskCard: React.FC = () => {
             placeholder={
               activeGoal
                 ? `Sedang fokus ke target: ${activeGoal.title}`
-                : 'Tuliskan nama tugas spesifik (contoh: Coding, Membaca Bab 3)...'
+                : "Tuliskan nama tugas spesifik (contoh: Coding, Membaca Bab 3)..."
             }
             className="w-full bg-[#0d0c15] border-2 border-[#3b335c] px-3 py-2 text-sm text-[#f0edf6] font-medium outline-none focus:border-[#00f0ff] transition-all"
           />
@@ -55,7 +69,10 @@ export const ActiveTaskCard: React.FC = () => {
         {/* Identity Selector */}
         <div className="w-full md:w-64">
           <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1 flex items-center gap-1.5">
-            <Sparkles size={13} className="text-[#ffd700]" />
+            <Sparkles
+              size={13}
+              className="text-[#ffd700]"
+            />
             Tautkan ke Identitas Diri:
           </label>
           <select
@@ -67,7 +84,10 @@ export const ActiveTaskCard: React.FC = () => {
             className="w-full bg-[#0d0c15] border-2 border-[#3b335c] px-3 py-2 text-sm text-[#00f0ff] font-silkscreen outline-none focus:border-[#00f0ff] cursor-pointer"
           >
             {identities.map((id) => (
-              <option key={id.id} value={id.id}>
+              <option
+                key={id.id}
+                value={id.id}
+              >
                 {id.name}
               </option>
             ))}
@@ -78,7 +98,10 @@ export const ActiveTaskCard: React.FC = () => {
       {/* Identity Motto / Affirmation Banner */}
       {currentIdentity && (
         <div className="pt-2 border-t border-[#2b2545] flex items-start gap-2 text-xs text-[#b8b0cf] italic">
-          <Quote size={13} className="text-[#ffd700] shrink-0 mt-0.5" />
+          <Quote
+            size={13}
+            className="text-[#ffd700] shrink-0 mt-0.5"
+          />
           <span>"{currentIdentity.motto}"</span>
         </div>
       )}

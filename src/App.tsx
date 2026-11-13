@@ -26,6 +26,7 @@ import { AddGoalModal } from './components/goals/AddGoalModal';
 
 import { StatsOverview } from './components/stats/StatsOverview';
 import { HeatmapGrid } from './components/stats/HeatmapGrid';
+import { ProductivityHourChart } from './components/stats/ProductivityHourChart';
 import { IdentityBreakdown } from './components/stats/IdentityBreakdown';
 import { SessionHistory } from './components/stats/SessionHistory';
 
@@ -312,6 +313,7 @@ export function App() {
           <div className="space-y-6">
             <StatsOverview />
             <HeatmapGrid />
+            <ProductivityHourChart />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <IdentityBreakdown />
               <SessionHistory />

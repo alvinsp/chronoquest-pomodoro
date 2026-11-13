@@ -1,5 +1,19 @@
-import React, { useEffect } from 'react';
-import { Target, CheckCircle, Clock, Flame, Plus, Award, Zap, Star, RotateCcw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Target,
+  CheckCircle,
+  Clock,
+  Flame,
+  Plus,
+  Award,
+  Zap,
+  Star,
+  RotateCcw,
+  ListTodo,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+} from 'lucide-react';
 import { useGoalStore } from '../../store/useGoalStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useTimerStore } from '../../store/useTimerStore';
@@ -21,9 +35,15 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
     checkAndRolloverDailyGoals,
     resetDailyGoalsToToday,
     resetSingleGoalProgress,
+    addSubTask,
+    toggleSubTask,
+    deleteSubTask,
   } = useGoalStore();
   const { getTodayMinutes, getTodaySessionsCount, currentStreak } = useStatsStore();
   const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
+
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+  const [subtaskInputMap, setSubtaskInputMap] = useState<Record<string, string>>({});
 
   const handleResetDailyConfirm = () => {
     if (window.confirm('Reset seluruh jam & progres Target Harian hari ini kembali ke 0?')) {
@@ -185,10 +205,15 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
               ? Math.min(100, Math.round((g.currentMinutes / g.targetMinutes) * 100))
               : (isCompleted ? 100 : 0);
 
+            const subtasks = g.subtasks || [];
+            const subtasksCount = subtasks.length;
+            const completedSubtasks = subtasks.filter((s) => s.completed).length;
+            const isExpanded = expandedGoalId === g.id;
+
             return (
               <div
                 key={g.id}
-                className={`p-2.5 border-2 flex items-center justify-between gap-3 text-xs transition-all ${
+                className={`p-2.5 border-2 flex flex-col gap-2 text-xs transition-all ${
                   isActive
                     ? 'bg-[#0f2129] border-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.25)]'
                     : isCompleted
@@ -196,88 +221,179 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
                     : 'bg-[#151224] border-[#2e2649] hover:border-[#3f3562]'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <button
-                    onClick={() => toggleGoalComplete(g.id)}
-                    className={`w-5 h-5 flex items-center justify-center border cursor-pointer shrink-0 ${
-                      isCompleted
-                        ? 'bg-[#00ff66] text-black border-black'
-                        : 'bg-[#0f0d1a] text-transparent border-[#3b335c] hover:border-[#00ff66]'
-                    }`}
-                    title={isCompleted ? 'Tandai belum selesai' : 'Tandai selesai'}
-                  >
-                    <CheckCircle size={14} className={isCompleted ? 'text-black' : 'opacity-0'} />
-                  </button>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <button
+                      onClick={() => toggleGoalComplete(g.id)}
+                      className={`w-5 h-5 flex items-center justify-center border cursor-pointer shrink-0 ${
+                        isCompleted
+                          ? 'bg-[#00ff66] text-black border-black'
+                          : 'bg-[#0f0d1a] text-transparent border-[#3b335c] hover:border-[#00ff66]'
+                      }`}
+                      title={isCompleted ? 'Tandai belum selesai' : 'Tandai selesai'}
+                    >
+                      <CheckCircle size={14} className={isCompleted ? 'text-black' : 'opacity-0'} />
+                    </button>
 
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {identity && (
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {identity && (
+                          <span
+                            className="w-2 h-2 inline-block shrink-0"
+                            style={{ backgroundColor: identity.color }}
+                          />
+                        )}
                         <span
-                          className="w-2 h-2 inline-block shrink-0"
-                          style={{ backgroundColor: identity.color }}
-                        />
-                      )}
-                      <span
-                        className={`font-silkscreen text-xs font-bold truncate ${
-                          isCompleted ? 'line-through text-[#7e759b]' : 'text-[#f0edf6]'
-                        }`}
-                      >
-                        {g.title}
-                      </span>
-
-                      {/* Active Goal Pill */}
-                      {isActive && (
-                        <span className="text-[9px] font-pixel px-1.5 py-0.2 bg-[#00f0ff] text-black border border-black flex items-center gap-0.5 font-bold">
-                          <Zap size={9} /> AKTIF
+                          className={`font-silkscreen text-xs font-bold truncate ${
+                            isCompleted ? 'line-through text-[#7e759b]' : 'text-[#f0edf6]'
+                          }`}
+                        >
+                          {g.title}
                         </span>
-                      )}
+
+                        {/* Active Goal Pill */}
+                        {isActive && (
+                          <span className="text-[9px] font-pixel px-1.5 py-0.2 bg-[#00f0ff] text-black border border-black flex items-center gap-0.5 font-bold">
+                            <Zap size={9} /> AKTIF
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] font-silkscreen text-[#9f97ba] mt-0.5 flex items-center gap-2">
+                        <span>{formatMinutes(g.currentMinutes)} / {formatMinutes(g.targetMinutes)} ({progress}%)</span>
+                        <span>•</span>
+                        <span>{g.currentSessions} / {g.targetSessions} sesi</span>
+                      </div>
                     </div>
-                    <div className="text-[10px] font-silkscreen text-[#9f97ba] mt-0.5 flex items-center gap-2">
-                      <span>{formatMinutes(g.currentMinutes)} / {formatMinutes(g.targetMinutes)} ({progress}%)</span>
-                      <span>•</span>
-                      <span>{g.currentSessions} / {g.targetSessions} sesi</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Quick Select as Active Goal Button */}
+                    {!isActive && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectActiveGoal(g)}
+                        className="px-2 py-1 bg-[#1c1830] hover:bg-[#2b2447] text-[#00f0ff] border border-[#3b335c] hover:border-[#00f0ff] text-[10px] font-silkscreen cursor-pointer flex items-center gap-1 transition-all"
+                        title="Jadikan target fokus aktif sesi timer ini"
+                      >
+                        <Target size={10} />
+                        <span className="hidden sm:inline">Set</span> Aktif
+                      </button>
+                    )}
+
+                    {/* Subtasks Accordion Button */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedGoalId(isExpanded ? null : g.id)}
+                      className={`px-1.5 py-1 text-[10px] font-silkscreen flex items-center gap-1 cursor-pointer transition-all border ${
+                        subtasksCount > 0
+                          ? 'bg-[#211836] text-[#b388ff] border-[#553b8a]'
+                          : 'bg-[#18142a] text-[#8e85aa] border-[#3b335c] hover:text-white'
+                      }`}
+                      title="Buka daftar sub-tugas / checklist"
+                    >
+                      <ListTodo size={11} />
+                      <span>{subtasksCount > 0 ? `${completedSubtasks}/${subtasksCount}` : '+ Sub-task'}</span>
+                      {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                    </button>
+
+                    {/* Reset Single Goal Button */}
+                    {(g.currentMinutes > 0 || g.currentSessions > 0 || isCompleted) && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleResetSingleGoal(e, g)}
+                        className="p-1 bg-[#1c1830] hover:bg-[#341626] text-[#8e85aa] hover:text-[#ff0055] border border-[#3b335c] hover:border-[#ff0055] text-[10px] font-silkscreen cursor-pointer transition-all"
+                        title={`Reset progres "${g.title}" kembali ke 0`}
+                      >
+                        <RotateCcw size={11} />
+                      </button>
+                    )}
+
+                    <div className="w-14 sm:w-20">
+                      <div className="w-full bg-[#0d0c15] border border-black h-2">
+                        <div
+                          className="h-full transition-all duration-300"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor: isActive ? '#00f0ff' : isCompleted ? '#00ff66' : identity?.color || '#ffd700',
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Quick Select as Active Goal Button */}
-                  {!isActive && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectActiveGoal(g)}
-                      className="px-2 py-1 bg-[#1c1830] hover:bg-[#2b2447] text-[#00f0ff] border border-[#3b335c] hover:border-[#00f0ff] text-[10px] font-silkscreen cursor-pointer flex items-center gap-1 transition-all"
-                      title="Jadikan target fokus aktif sesi timer ini"
-                    >
-                      <Target size={10} />
-                      <span className="hidden sm:inline">Set</span> Aktif
-                    </button>
-                  )}
+                {/* Expandable Subtask Checklist */}
+                {isExpanded && (
+                  <div className="mt-2 pt-2 border-t border-[#261f3d] space-y-2">
+                    {subtasks.length > 0 ? (
+                      <div className="space-y-1.5 pl-7 pr-1">
+                        {subtasks.map((st) => (
+                          <div
+                            key={st.id}
+                            className="flex items-center justify-between gap-2 p-1.5 bg-[#0f0d1b] border border-[#2b2447] group hover:border-[#433966]"
+                          >
+                            <label className="flex items-center gap-2 cursor-pointer min-w-0 flex-1">
+                              <input
+                                type="checkbox"
+                                checked={st.completed}
+                                onChange={() => toggleSubTask(g.id, st.id)}
+                                className="accent-[#00ff66] w-3.5 h-3.5 cursor-pointer shrink-0"
+                              />
+                              <span
+                                className={`text-[11px] font-silkscreen truncate ${
+                                  st.completed ? 'line-through text-[#6e668c]' : 'text-[#f0edf6]'
+                                }`}
+                              >
+                                {st.title}
+                              </span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => deleteSubTask(g.id, st.id)}
+                              className="text-[#5a5275] hover:text-[#ff0055] p-0.5 cursor-pointer transition-opacity"
+                              title="Hapus sub-tugas"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-[#71688d] italic pl-7">
+                        Belum ada sub-tugas. Tambahkan langkah kecil di bawah ini (+5 XP per langkah selesai).
+                      </p>
+                    )}
 
-                  {/* Reset Single Goal Button */}
-                  {(g.currentMinutes > 0 || g.currentSessions > 0 || isCompleted) && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleResetSingleGoal(e, g)}
-                      className="p-1 bg-[#1c1830] hover:bg-[#341626] text-[#8e85aa] hover:text-[#ff0055] border border-[#3b335c] hover:border-[#ff0055] text-[10px] font-silkscreen cursor-pointer transition-all"
-                      title={`Reset progres "${g.title}" kembali ke 0`}
+                    {/* Quick Add Subtask Form */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const val = subtaskInputMap[g.id]?.trim();
+                        if (val) {
+                          addSubTask(g.id, val);
+                          setSubtaskInputMap((prev) => ({ ...prev, [g.id]: '' }));
+                        }
+                      }}
+                      className="flex items-center gap-1.5 pl-7 pr-1"
                     >
-                      <RotateCcw size={11} />
-                    </button>
-                  )}
-
-                  <div className="w-16 sm:w-20">
-                    <div className="w-full bg-[#0d0c15] border border-black h-2">
-                      <div
-                        className="h-full transition-all duration-300"
-                        style={{
-                          width: `${progress}%`,
-                          backgroundColor: isActive ? '#00f0ff' : isCompleted ? '#00ff66' : identity?.color || '#ffd700',
-                        }}
+                      <input
+                        type="text"
+                        value={subtaskInputMap[g.id] || ''}
+                        onChange={(e) =>
+                          setSubtaskInputMap((prev) => ({ ...prev, [g.id]: e.target.value }))
+                        }
+                        placeholder="Contoh: Baca Bab 1, Latihan 20 soal..."
+                        className="flex-1 bg-[#0a0815] border border-[#3b335c] px-2.5 py-1 text-xs text-[#00f0ff] font-silkscreen outline-none focus:border-[#00f0ff]"
                       />
-                    </div>
+                      <button
+                        type="submit"
+                        className="px-2.5 py-1 bg-[#241a3d] hover:bg-[#342757] text-[#00ff66] border border-[#3b335c] hover:border-[#00ff66] text-[10px] font-silkscreen cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus size={11} /> Tambah
+                      </button>
+                    </form>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}

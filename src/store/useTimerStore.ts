@@ -197,11 +197,23 @@ export const useTimerStore = create<TimerState>()(
       },
 
       resetTimer: () => {
-        soundFx.playClick();
+        const { status, mode, totalDuration, timeRemaining } = get();
+
+        // 2B PENALTY: If user forfeits a focus session that ran for 30s or more, deduct 10 HP!
+        if (status === "running" && mode === "focus") {
+          const elapsed = totalDuration - timeRemaining;
+          if (elapsed >= 30) {
+            useGamifyStore.getState().takeDamage(10, "Menyerah di tengah sesi fokus");
+          } else {
+            soundFx.playClick();
+          }
+        } else {
+          soundFx.playClick();
+        }
+
         const preset =
           get().presets.find((p) => p.id === get().activePresetId) ||
           get().presets[0];
-        const mode = get().mode;
         const maxRounds = preset.roundsBeforeLongBreak || 4;
         let durationMins = preset.focusMinutes;
         if (mode === "shortBreak") durationMins = preset.shortBreakMinutes;
@@ -344,10 +356,36 @@ export const useTimerStore = create<TimerState>()(
           // Focus session completed!
           soundFx.playComplete();
 
+          // Mobile device vibration trigger
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+            try {
+              navigator.vibrate([250, 100, 250, 100, 500]);
+            } catch {}
+          }
+
           const { xp, gold } = calculateXpGain(
             durationMinutes,
             preset.xpMultiplier,
           );
+
+          // 2C Pet Passive Perks Activation
+          const equippedPet = useGamifyStore.getState().hero.petId;
+          let petXpBonus = 0;
+          let petGoldBonus = 0;
+          let bossDmgBonus = 0;
+
+          if (equippedPet === "pet-slime") petGoldBonus = 2;
+          if (equippedPet === "pet-dragon") petXpBonus = 15;
+          if (equippedPet === "pet-drone") bossDmgBonus = Math.max(1, Math.round(durationMinutes * 0.1));
+          if (equippedPet === "pet-cat") {
+            useGamifyStore.setState((s) => ({
+              hero: { ...s.hero, mana: Math.min(s.hero.maxMana, s.hero.mana + 10) },
+            }));
+          }
+
+          const finalXp = xp + petXpBonus;
+          const finalGold = gold + petGoldBonus;
+          const finalBossDamage = durationMinutes + bossDmgBonus;
 
           const { activeGoalId, goals, identities } = useGoalStore.getState();
           const identity = identities.find((i) => i.id === activeIdentityId);
@@ -380,8 +418,8 @@ export const useTimerStore = create<TimerState>()(
             goalId: activeGoal?.id,
             goalTitle: activeGoal?.title,
             taskTitle: resolvedTitle,
-            xpEarned: xp,
-            goldEarned: gold,
+            xpEarned: finalXp,
+            goldEarned: finalGold,
             completed: true,
           });
 
@@ -395,8 +433,8 @@ export const useTimerStore = create<TimerState>()(
             );
 
           // 3. Add XP & Gold to Gamify hero and attack current Boss
-          useGamifyStore.getState().addXpAndGold(xp, gold);
-          useGamifyStore.getState().damageActiveBoss(durationMinutes);
+          useGamifyStore.getState().addXpAndGold(finalXp, finalGold);
+          useGamifyStore.getState().damageActiveBoss(finalBossDamage);
 
           // 4. Update quests
           const todayMins = useStatsStore.getState().getTodayMinutes();
@@ -440,8 +478,8 @@ export const useTimerStore = create<TimerState>()(
             completedSummary: {
               mode: "focus",
               durationMinutes,
-              xp,
-              gold,
+              xp: finalXp,
+              gold: finalGold,
               taskTitle: resolvedTitle,
               round: currentRound,
             },
@@ -449,6 +487,12 @@ export const useTimerStore = create<TimerState>()(
         } else {
           // Break finished!
           soundFx.playBreakStart();
+
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+            try {
+              navigator.vibrate([200, 100, 300]);
+            } catch {}
+          }
 
           try {
             if (

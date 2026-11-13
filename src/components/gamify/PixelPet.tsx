@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { soundFx } from '../../audio/synthAudio';
 
 interface PixelPetProps {
   petId: string;
@@ -6,6 +7,47 @@ interface PixelPetProps {
 }
 
 export const PixelPet: React.FC<PixelPetProps> = ({ petId, isFocused = false }) => {
+  const [showHeart, setShowHeart] = useState(false);
+
+  const getPetPerkInfo = () => {
+    switch (petId) {
+      case 'pet-cat':
+        return {
+          name: 'Mecha Cybercat',
+          perk: '+10 Mana Tiap Sesi',
+          emote: isFocused ? '⚡' : '💤',
+        };
+      case 'pet-dragon':
+        return {
+          name: 'Fireling Wyrm',
+          perk: '+15 XP Tiap Sesi',
+          emote: isFocused ? '🔥' : '💤',
+        };
+      case 'pet-drone':
+        return {
+          name: 'Omni Observer Bot',
+          perk: '+10% DMG Boss',
+          emote: isFocused ? '📡' : '💤',
+        };
+      case 'pet-slime':
+      default:
+        return {
+          name: 'Pixel Slime',
+          perk: '+2 Gold Tiap Sesi',
+          emote: isFocused ? '💚' : '💤',
+        };
+    }
+  };
+
+  const petInfo = getPetPerkInfo();
+
+  const handlePetClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundFx.playCoin();
+    setShowHeart(true);
+    setTimeout(() => setShowHeart(false), 1200);
+  };
+
   const renderPet = () => {
     switch (petId) {
       case 'pet-cat':
@@ -80,14 +122,19 @@ export const PixelPet: React.FC<PixelPetProps> = ({ petId, isFocused = false }) 
 
   return (
     <div
-      className={`w-9 h-9 inline-flex items-center justify-center p-1 bg-[#09080e]/60 border border-[#3b335c] pixel-corners ${
+      onClick={handlePetClick}
+      className={`w-9 h-9 inline-flex items-center justify-center p-1 bg-[#09080e]/60 border border-[#3b335c] pixel-corners relative cursor-pointer group ${
         isFocused ? 'animate-bounce' : 'animate-pixel-float'
       }`}
-      style={{ animationDuration: '1.8s' }}
-      title="Companion Pet"
+      style={{ animationDuration: isFocused ? '0.8s' : '2.2s' }}
+      title={`${petInfo.name} — Perk Pasif: ${petInfo.perk}. Klik untuk elus!`}
     >
+      {/* Dynamic Emote Bubble */}
+      <span className="absolute -top-3.5 -right-2 text-[10px] select-none pointer-events-none drop-shadow">
+        {showHeart ? '💖' : petInfo.emote}
+      </span>
+
       {renderPet()}
     </div>
   );
 };
-

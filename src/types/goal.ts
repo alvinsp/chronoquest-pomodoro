@@ -1,5 +1,12 @@
 export type GoalPeriod = 'daily' | 'monthly' | 'annually';
 
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  createdAt: number;
+}
+
 export interface Identity {
   id: string;
   name: string;           // e.g. "Software Architect"
@@ -24,6 +31,7 @@ export interface Goal {
   date?: string;          // For daily goals, YYYY-MM-DD
   completed: boolean;
   notes?: string;
+  subtasks?: SubTask[];
   createdAt: string;
 }
 

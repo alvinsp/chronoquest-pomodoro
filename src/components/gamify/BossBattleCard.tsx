@@ -1,10 +1,10 @@
 import React from 'react';
-import { Skull, Swords, Trophy, Sparkles, Coins, Zap } from 'lucide-react';
+import { Skull, Swords, Trophy, Sparkles, Coins, Zap, Award } from 'lucide-react';
 import { useGamifyStore } from '../../store/useGamifyStore';
 import { PixelProgress } from '../ui/PixelProgress';
 
 export const BossBattleCard: React.FC<{ isFocused?: boolean }> = ({ isFocused = false }) => {
-  const { bosses, activeBossIndex, recentBossDefeat, clearBossAlert } = useGamifyStore();
+  const { bosses, activeBossIndex, recentBossDefeat, clearBossAlert, openBossLootChest } = useGamifyStore();
 
   const currentBoss = bosses[activeBossIndex] || bosses[0];
 
@@ -100,20 +100,50 @@ export const BossBattleCard: React.FC<{ isFocused?: boolean }> = ({ isFocused = 
       {/* Background Boss Glow */}
       <div className="absolute top-0 left-0 -mt-8 -ml-8 w-36 h-36 bg-[#ff0055]/15 rounded-full blur-2xl pointer-events-none" />
 
-      {/* Boss Defeated Pop-up Notice */}
-      {recentBossDefeat && (
-        <div className="mb-4 p-3 bg-[#ffd700] text-black border-2 border-black flex items-center justify-between animate-bounce">
-          <div className="flex items-center gap-2">
-            <Trophy size={20} className="text-black" />
-            <span className="font-pixel text-xs">
-              BOS DIKALAHKAN: {recentBossDefeat.bossName}! (+{recentBossDefeat.gold} Gold, +{recentBossDefeat.xp} XP)
-            </span>
+      {/* Interactive Boss Defeated Loot Chest */}
+      {recentBossDefeat && !recentBossDefeat.isOpened && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-[#241704] via-[#452b07] to-[#241704] border-2 border-[#ffd700] shadow-[0_0_15px_rgba(255,215,0,0.35)] text-center space-y-2.5">
+          <div className="flex items-center justify-center gap-2 text-[#ffd700] font-pixel text-xs sm:text-sm animate-pulse">
+            <Trophy size={18} />
+            <span>VICTORY! BOS {recentBossDefeat.bossName.toUpperCase()} DIKALAHKAN!</span>
+          </div>
+          <p className="font-silkscreen text-xs text-[#f5e6a3]">
+            Monster distorsi waktu telah takluk! Bos menjatuhkan peti harta karun legendaris.
+          </p>
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={openBossLootChest}
+              className="px-5 py-2.5 bg-[#ffd700] hover:bg-[#ffe14d] active:bg-[#e6c200] text-black font-pixel text-xs font-bold border-2 border-black shadow-[3px_3px_0px_#000] cursor-pointer inline-flex items-center gap-2 transform hover:scale-105 transition-all"
+            >
+              <span>🎁 BUKA PETI HARTA BOSS!</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loot Chest Opened Banner */}
+      {recentBossDefeat && recentBossDefeat.isOpened && (
+        <div className="mb-4 p-3.5 bg-[#14281c] border-2 border-[#00ff66] shadow-[2px_2px_0px_#000] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <Award size={22} className="text-[#00ff66] shrink-0 mt-0.5" />
+            <div>
+              <span className="font-pixel text-[11px] text-[#00ff66] block">
+                HADIAH KEMENANGAN KLAIM SUKSES!
+              </span>
+              <p className="font-silkscreen text-xs text-[#d8fced] mt-0.5">
+                👑 Gelar Baru: <strong className="text-[#ffd700] underline">{recentBossDefeat.droppedTitle}</strong> • +{recentBossDefeat.gold} Gold • +{recentBossDefeat.xp} XP
+              </p>
+              <span className="text-[10px] text-[#7ce0b2] block mt-0.5 font-silkscreen">
+                ⚡ Buff Aktif: {recentBossDefeat.buffDescription}
+              </span>
+            </div>
           </div>
           <button
             onClick={clearBossAlert}
-            className="px-2 py-0.5 bg-black text-white font-pixel text-[10px] cursor-pointer"
+            className="px-3 py-1 bg-black text-[#00ff66] border border-[#00ff66] hover:bg-[#00ff66] hover:text-black font-pixel text-[10px] cursor-pointer transition-all self-end sm:self-center"
           >
-            TUTUP
+            LANJUTKAN
           </button>
         </div>
       )}

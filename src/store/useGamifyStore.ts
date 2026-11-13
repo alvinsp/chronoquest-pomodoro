@@ -9,6 +9,16 @@ import { calculateTargetXp, getTitleForLevel } from '../utils/levelCalculator';
 import { soundFx } from '../audio/synthAudio';
 import { useSettingsStore } from './useSettingsStore';
 
+export interface BossDefeatLoot {
+  bossName: string;
+  bossTitle: string;
+  gold: number;
+  xp: number;
+  droppedTitle: string;
+  buffDescription: string;
+  isOpened: boolean;
+}
+
 interface GamifyState {
   hero: UserHero;
   quests: Quest[];
@@ -17,15 +27,17 @@ interface GamifyState {
   bosses: Boss[];
   activeBossIndex: number;
   recentLevelUp: boolean;
-  recentBossDefeat: { bossName: string; gold: number; xp: number } | null;
+  recentBossDefeat: BossDefeatLoot | null;
 
   addXpAndGold: (xpEarned: number, goldEarned: number) => { leveledUp: boolean; newLevel: number };
+  takeDamage: (amount: number, reason?: string) => { damageDealt: number; newHp: number };
   claimQuest: (questId: string) => void;
   updateQuestsProgress: (sessionsToday: number, minutesToday: number, identityId: string) => void;
   unlockBadge: (badgeId: string) => void;
   buyShopItem: (itemId: string) => boolean;
   equipShopItem: (itemId: string) => void;
   damageActiveBoss: (damage: number) => { bossDefeated: boolean; bossName: string; lootGold: number; lootXp: number };
+  openBossLootChest: () => void;
   updateHeroProfile: (updates: Partial<UserHero>) => void;
   setAvatarId: (avatarId: string) => void;
   clearLevelUpAlert: () => void;
@@ -116,6 +128,19 @@ export const useGamifyStore = create<GamifyState>()(
         return { leveledUp, newLevel: level };
       },
 
+      takeDamage: (amount: number, _reason?: string) => {
+        soundFx.playPause();
+        const currentHero = get().hero;
+        const newHp = Math.max(1, currentHero.hp - amount);
+        set((state) => ({
+          hero: {
+            ...state.hero,
+            hp: newHp,
+          },
+        }));
+        return { damageDealt: amount, newHp };
+      },
+
       damageActiveBoss: (damage) => {
         const { bosses, activeBossIndex } = get();
         const currentBoss = bosses[activeBossIndex];
@@ -146,12 +171,39 @@ export const useGamifyStore = create<GamifyState>()(
             nextIndex = activeBossIndex + 1;
           }
 
-          get().addXpAndGold(lootXp, lootGold);
+          const bossRewardMap: Record<string, { title: string; buff: string }> = {
+            'boss-procrastinus': {
+              title: 'Slayer of Procrastination',
+              buff: '+15% Deep Focus Surge',
+            },
+            'boss-doomscroll': {
+              title: 'Phantom Netrunner',
+              buff: 'Anti-Distraction Aegis',
+            },
+            'boss-sloth': {
+              title: 'Vigor Ironclad',
+              buff: '+20% Vitality Flow',
+            },
+            'boss-multitask': {
+              title: 'Singular Focus Archon',
+              buff: '+30% Mythic Flow State',
+            },
+          };
+
+          const rewardInfo = bossRewardMap[currentBoss.id] || {
+            title: `Conqueror of ${currentBoss.name}`,
+            buff: '+15% Victory Aura',
+          };
+
           set({
             recentBossDefeat: {
               bossName: currentBoss.name,
+              bossTitle: currentBoss.title,
               gold: lootGold,
               xp: lootXp,
+              droppedTitle: rewardInfo.title,
+              buffDescription: rewardInfo.buff,
+              isOpened: false,
             },
           });
         }
@@ -171,6 +223,32 @@ export const useGamifyStore = create<GamifyState>()(
           lootGold,
           lootXp,
         };
+      },
+
+      openBossLootChest: () => {
+        const { recentBossDefeat } = get();
+        if (!recentBossDefeat || recentBossDefeat.isOpened) return;
+
+        soundFx.playLevelUp();
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.5 },
+          colors: ['#ffd700', '#ff0055', '#00f0ff', '#ffffff'],
+        });
+
+        get().addXpAndGold(recentBossDefeat.xp, recentBossDefeat.gold);
+
+        set((state) => ({
+          hero: {
+            ...state.hero,
+            title: recentBossDefeat.droppedTitle,
+          },
+          recentBossDefeat: {
+            ...recentBossDefeat,
+            isOpened: true,
+          },
+        }));
       },
 
       claimQuest: (questId) => {

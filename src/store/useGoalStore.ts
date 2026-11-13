@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { soundFx } from "../audio/synthAudio";
-import type { Goal, Identity } from "../types/goal";
+import { useGamifyStore } from "./useGamifyStore";
+import type { Goal, Identity, SubTask } from "../types/goal";
 import { DEFAULT_GOALS, DEFAULT_IDENTITIES } from "../utils/defaults";
 import { getTodayDateString } from "../utils/formatters";
 
@@ -39,6 +40,9 @@ interface GoalState {
   checkAndRolloverDailyGoals: () => void;
   resetDailyGoalsToToday: () => void;
   resetSingleGoalProgress: (goalId: string) => void;
+  addSubTask: (goalId: string, title: string) => void;
+  toggleSubTask: (goalId: string, subtaskId: string) => void;
+  deleteSubTask: (goalId: string, subtaskId: string) => void;
 }
 
 export const useGoalStore = create<GoalState>()(
@@ -268,6 +272,59 @@ export const useGoalStore = create<GoalState>()(
             }
             return g;
           }),
+        }));
+      },
+
+      addSubTask: (goalId: string, title: string) => {
+        if (!title.trim()) return;
+        soundFx.playClick();
+        const newSubtask: SubTask = {
+          id: 'sub-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+          title: title.trim(),
+          completed: false,
+          createdAt: Date.now(),
+        };
+        set((state) => ({
+          goals: state.goals.map((g) =>
+            g.id === goalId
+              ? { ...g, subtasks: [...(g.subtasks || []), newSubtask] }
+              : g
+          ),
+        }));
+      },
+
+      toggleSubTask: (goalId: string, subtaskId: string) => {
+        let isNowCompleted = false;
+        set((state) => ({
+          goals: state.goals.map((g) => {
+            if (g.id !== goalId) return g;
+            const updated = (g.subtasks || []).map((s) => {
+              if (s.id === subtaskId) {
+                isNowCompleted = !s.completed;
+                return { ...s, completed: isNowCompleted };
+              }
+              return s;
+            });
+            return { ...g, subtasks: updated };
+          }),
+        }));
+
+        if (isNowCompleted) {
+          soundFx.playCoin();
+          useGamifyStore.getState().addXpAndGold(5, 1);
+        } else {
+          soundFx.playClick();
+        }
+      },
+
+      deleteSubTask: (goalId: string, subtaskId: string) => {
+        soundFx.playClick();
+        set((state) => ({
+          goals: state.goals.map((g) =>
+            g.id === goalId
+              ? { ...g, subtasks: (g.subtasks || []).filter((s) => s.id !== subtaskId) }
+              : g
+          ),
         }));
       },
     }),

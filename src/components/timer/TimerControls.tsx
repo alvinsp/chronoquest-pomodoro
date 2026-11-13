@@ -3,6 +3,7 @@ import { Play, Pause, RotateCcw, SkipForward, Volume2, VolumeX, Headphones, Maxi
 import { useTimerStore } from '../../store/useTimerStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { PixelButton } from '../ui/PixelButton';
+import { PipTimerButton } from './PipTimerButton';
 import type { AmbientSoundType } from '../../audio/ambientNoise';
 
 interface TimerControlsProps {
@@ -75,6 +76,9 @@ export const TimerControls: React.FC<TimerControlsProps> = ({ onOpenZenMode }) =
             <span>Zen Theater (F)</span>
           </button>
         )}
+
+        {/* Floating Mini PiP Timer */}
+        <PipTimerButton />
 
         {/* Mute button */}
         <button
