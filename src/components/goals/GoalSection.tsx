@@ -8,7 +8,7 @@ import {
     Zap,
     Pencil,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGoalStore } from "../../store/useGoalStore";
 import { useTimerStore } from "../../store/useTimerStore";
 import type { Goal, GoalPeriod } from "../../types/goal";
@@ -25,12 +25,17 @@ export const GoalSection: React.FC = () => {
     setActiveGoalId,
     toggleGoalComplete,
     deleteGoal,
+    checkAndRolloverDailyGoals,
   } = useGoalStore();
   const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } =
     useTimerStore();
   const [selectedPeriod, setSelectedPeriod] = useState<GoalPeriod>("daily");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+
+  useEffect(() => {
+    checkAndRolloverDailyGoals();
+  }, [checkAndRolloverDailyGoals]);
 
   const filteredGoals = goals.filter((g) => g.period === selectedPeriod);
 
@@ -46,7 +51,7 @@ export const GoalSection: React.FC = () => {
     <div className="space-y-4">
       {/* Header & Tabs */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b-2 border-[#2b2545]">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(["daily", "monthly", "annually"] as const).map((period) => (
             <button
               key={period}
@@ -58,7 +63,7 @@ export const GoalSection: React.FC = () => {
               }`}
             >
               {period === "daily"
-                ? "📅 Harian"
+                ? "📅 Harian (Reset 07:00 WIB)"
                 : period === "monthly"
                   ? "🌙 Bulanan"
                   : "🌟 Tahunan"}

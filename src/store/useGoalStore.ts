@@ -2,9 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { soundFx } from "../audio/synthAudio";
 import { useGamifyStore } from "./useGamifyStore";
+import { useStatsStore } from "./useStatsStore";
 import type { Goal, Identity, SubTask } from "../types/goal";
 import { DEFAULT_GOALS, DEFAULT_IDENTITIES } from "../utils/defaults";
-import { getTodayDateString } from "../utils/formatters";
+import { getEffectiveDateString, getTodayDateString } from "../utils/formatters";
 
 interface GoalState {
   identities: Identity[];
@@ -36,8 +37,9 @@ interface GoalState {
     specificGoalId?: string,
   ) => void;
 
-  // Day-change auto refresh & manual refresh
+  // Day-change auto refresh & manual refresh (07:00 AM WIB cutoff)
   checkAndRolloverDailyGoals: () => void;
+  syncDailyGoalsWithSessions: () => void;
   resetDailyGoalsToToday: () => void;
   resetSingleGoalProgress: (goalId: string) => void;
   addSubTask: (goalId: string, title: string) => void;
@@ -214,6 +216,64 @@ export const useGoalStore = create<GoalState>()(
         }));
       },
 
+      syncDailyGoalsWithSessions: () => {
+        const todayStr = getTodayDateString();
+        const { goals } = get();
+        const statsSessions = useStatsStore.getState().sessions;
+        const todayFocusSessions = statsSessions.filter((s) => {
+          const dStr = s.timestamp ? getEffectiveDateString(s.timestamp) : s.dateStr;
+          return dStr === todayStr && s.mode === "focus";
+        });
+
+        const dailyGoals = goals.filter((g) => g.period === "daily");
+        if (dailyGoals.length === 0) return;
+
+        let changed = false;
+        const updatedGoals = goals.map((goal) => {
+          if (goal.period !== "daily") return goal;
+
+          const matchingSessions = todayFocusSessions.filter((s) => {
+            if (s.goalId) return s.goalId === goal.id;
+            if (dailyGoals.length === 1) return true;
+            return s.identityId === goal.identityId;
+          });
+
+          const sessionMinutes = matchingSessions.reduce(
+            (acc, s) => acc + s.durationMinutes,
+            0
+          );
+          const sessionCount = matchingSessions.length;
+
+          const effectiveMinutes = Math.max(goal.currentMinutes, sessionMinutes);
+          const effectiveSessions = Math.max(goal.currentSessions, sessionCount);
+          const isCompleted =
+            goal.completed ||
+            (goal.targetMinutes > 0 && effectiveMinutes >= goal.targetMinutes) ||
+            (goal.targetSessions > 0 && effectiveSessions >= goal.targetSessions);
+
+          if (
+            effectiveMinutes !== goal.currentMinutes ||
+            effectiveSessions !== goal.currentSessions ||
+            isCompleted !== goal.completed ||
+            goal.date !== todayStr
+          ) {
+            changed = true;
+            return {
+              ...goal,
+              currentMinutes: effectiveMinutes,
+              currentSessions: effectiveSessions,
+              completed: isCompleted,
+              date: todayStr,
+            };
+          }
+          return goal;
+        });
+
+        if (changed) {
+          set({ goals: updatedGoals });
+        }
+      },
+
       checkAndRolloverDailyGoals: () => {
         const todayStr = getTodayDateString();
         const { goals } = get();
@@ -221,7 +281,7 @@ export const useGoalStore = create<GoalState>()(
         let changed = false;
         const updatedGoals = goals.map((goal) => {
           if (goal.period === "daily") {
-            // If goal date is missing, do NOT wipe minutes! Just tag it with todayStr
+            // If goal date is missing, tag with todayStr without wiping minutes
             if (!goal.date) {
               changed = true;
               return {
@@ -229,14 +289,22 @@ export const useGoalStore = create<GoalState>()(
                 date: todayStr,
               };
             }
-            // If goal date is from an earlier day (yesterday or older), rollover to new day!
-            if (goal.date !== todayStr) {
+            // If goal date is older than today's working day (before 07:00 AM cutoff), rollover to new day!
+            if (goal.date < todayStr) {
               changed = true;
               return {
                 ...goal,
                 currentMinutes: 0,
                 currentSessions: 0,
                 completed: false,
+                date: todayStr,
+              };
+            }
+            // If goal date is > todayStr (due to calendar midnight bug), normalize to todayStr without wiping minutes!
+            if (goal.date > todayStr) {
+              changed = true;
+              return {
+                ...goal,
                 date: todayStr,
               };
             }
@@ -247,6 +315,9 @@ export const useGoalStore = create<GoalState>()(
         if (changed) {
           set({ goals: updatedGoals });
         }
+
+        // Synchronize daily goal minutes with today's session records
+        get().syncDailyGoalsWithSessions();
       },
 
       resetDailyGoalsToToday: () => {
@@ -344,8 +415,9 @@ export const useGoalStore = create<GoalState>()(
       name: "pixel-pomodoro-goals",
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        // Auto-refresh daily goals when day changes!
+        // Auto-refresh daily goals when day changes and synchronize with today's sessions
         state.checkAndRolloverDailyGoals();
+        state.syncDailyGoalsWithSessions();
 
         // Self-heal: If a daily goal has targetMinutes > 0 and currentMinutes < targetMinutes,
         // but was falsely marked completed by the session-count bug, un-complete it!

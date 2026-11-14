@@ -1,7 +1,7 @@
 export function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
 export function formatMinutes(totalMinutes: number): string {
@@ -21,7 +21,7 @@ export function formatMinutes(totalMinutes: number): string {
  * The daily rollover officially triggers at 07:00:00 AM Jakarta time.
  */
 export const DAY_CUTOFF_HOUR = 7;
-export const APP_TIMEZONE = 'Asia/Jakarta';
+export const APP_TIMEZONE = "Asia/Jakarta";
 
 /**
  * Returns the effective working day date string (YYYY-MM-DD) in Asia/Jakarta timezone
@@ -34,10 +34,10 @@ export const APP_TIMEZONE = 'Asia/Jakarta';
 export function getEffectiveDateString(
   dateOrTimestamp?: Date | number,
   daysAgo: number = 0,
-  cutoffHour: number = DAY_CUTOFF_HOUR
+  cutoffHour: number = DAY_CUTOFF_HOUR,
 ): string {
   const ms =
-    typeof dateOrTimestamp === 'number'
+    typeof dateOrTimestamp === "number"
       ? dateOrTimestamp
       : (dateOrTimestamp?.getTime() ?? Date.now());
 
@@ -46,16 +46,16 @@ export function getEffectiveDateString(
   const shiftedDate = new Date(shiftedMs);
 
   try {
-    return new Intl.DateTimeFormat('en-CA', {
+    return new Intl.DateTimeFormat("en-CA", {
       timeZone: APP_TIMEZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }).format(shiftedDate);
   } catch {
     const year = shiftedDate.getFullYear();
-    const month = String(shiftedDate.getMonth() + 1).padStart(2, '0');
-    const day = String(shiftedDate.getDate()).padStart(2, '0');
+    const month = String(shiftedDate.getMonth() + 1).padStart(2, "0");
+    const day = String(shiftedDate.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 }
@@ -65,7 +65,7 @@ export function getEffectiveDateString(
  */
 export function getTodayDateString(
   dateOrTimestamp?: Date | number,
-  cutoffHour: number = DAY_CUTOFF_HOUR
+  cutoffHour: number = DAY_CUTOFF_HOUR,
 ): string {
   return getEffectiveDateString(dateOrTimestamp, 0, cutoffHour);
 }
@@ -75,23 +75,22 @@ export function getTodayDateString(
  */
 export function getYesterdayDateString(
   dateOrTimestamp?: Date | number,
-  cutoffHour: number = DAY_CUTOFF_HOUR
+  cutoffHour: number = DAY_CUTOFF_HOUR,
 ): string {
   return getEffectiveDateString(dateOrTimestamp, 1, cutoffHour);
 }
 
 export function formatDatePretty(dateStr: string): string {
   try {
-    const [year, month, day] = dateStr.split('-');
+    const [year, month, day] = dateStr.split("-");
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    return date.toLocaleDateString('id-ID', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+    return date.toLocaleDateString("id-ID", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   } catch {
     return dateStr;
   }
 }
-

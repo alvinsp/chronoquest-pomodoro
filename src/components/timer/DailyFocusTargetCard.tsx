@@ -174,7 +174,15 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
             <Clock size={13} className="text-[#00f0ff]" />
             Total Fokus Hari Ini: {formatMinutes(todayMinutes)} / {formatMinutes(aggregateTargetMinutes)}
           </span>
-          <span className="font-pixel text-[11px] text-[#ffd700]">{overallPercent}% TERCAPAI</span>
+          <div className="flex items-center gap-2">
+            <span
+              className="text-[9px] font-pixel text-[#00f0ff] bg-[#00f0ff]/10 px-1.5 py-0.5 border border-[#00f0ff]/30"
+              title="Total fokus & target harian dihitung dari pukul 07:00 Pagi kemarin sampai 06:59 Pagi hari berikutnya."
+            >
+              RESET 07:00 WIB
+            </span>
+            <span className="font-pixel text-[11px] text-[#ffd700]">{overallPercent}% TERCAPAI</span>
+          </div>
         </div>
 
         <PixelProgress
