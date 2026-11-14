@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Monitor, Bell, Palette, RotateCcw } from 'lucide-react';
+import { Volume2, Monitor, Bell, Palette, RotateCcw, Clock } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useGamifyStore } from '../../store/useGamifyStore';
 import { PixelModal } from '../ui/PixelModal';
@@ -181,6 +181,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Daily Rollover Cutoff Info */}
+        <div className="space-y-1.5 p-3 bg-[#130f21] border-2 border-[#2b2545]">
+          <div className="flex items-center justify-between text-[#f0edf6]">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-[#ffd700]">
+              <Clock size={15} /> Siklus Reset Harian (Daily Cutoff)
+            </span>
+            <span className="text-[10px] font-pixel px-2 py-0.5 bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]">
+              07:00 WIB (JAKARTA)
+            </span>
+          </div>
+          <p className="text-[11px] text-[#9f97ba] leading-relaxed">
+            Didesain khusus untuk Anda yang belajar/bekerja hingga larut malam. Sesi fokus lewat tengah malam (00:00 - 06:59 WIB) tetap dihitung ke hari yang sama, dan data/target baru akan di-refresh tepat pada pukul <strong>07:00 Pagi WIB</strong>.
+          </p>
         </div>
 
         {/* Factory Reset */}

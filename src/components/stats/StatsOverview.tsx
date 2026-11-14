@@ -2,7 +2,7 @@ import React from 'react';
 import { Clock, Flame, Zap, Trophy } from 'lucide-react';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useGamifyStore } from '../../store/useGamifyStore';
-import { formatMinutes } from '../../utils/formatters';
+import { formatMinutes, getTodayDateString, getEffectiveDateString } from '../../utils/formatters';
 
 export const StatsOverview: React.FC = () => {
   const { currentStreak, longestStreak, getTotalMinutes, getTodayMinutes, sessions } = useStatsStore();
@@ -10,10 +10,12 @@ export const StatsOverview: React.FC = () => {
 
   const totalMinutes = getTotalMinutes();
   const todayMinutes = getTodayMinutes();
+  const todayStr = getTodayDateString();
   const focusSessions = sessions.filter((s) => s.mode === 'focus');
-  const todaySessions = focusSessions.filter(
-    (s) => s.dateStr === new Date().toISOString().split('T')[0]
-  );
+  const todaySessions = focusSessions.filter((s) => {
+    const dStr = s.timestamp ? getEffectiveDateString(s.timestamp) : s.dateStr;
+    return dStr === todayStr;
+  });
 
   const statCards = [
     {

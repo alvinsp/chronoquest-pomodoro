@@ -16,9 +16,14 @@ export const DailyQuestsModal: React.FC<DailyQuestsModalProps> = ({ isOpen, onCl
   return (
     <PixelModal isOpen={isOpen} onClose={onClose} title="📜 Guild Quest Board (Harian)">
       <div className="space-y-4">
-        <p className="text-xs text-[#a097bd] font-silkscreen mb-3">
-          Selesaikan quest produktivitas harian untuk mendapatkan bonus XP dan Gold untuk leveling heromu!
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <p className="text-xs text-[#a097bd] font-silkscreen">
+            Selesaikan quest produktivitas harian untuk bonus XP dan Gold leveling heromu!
+          </p>
+          <span className="text-[10px] font-pixel px-2 py-0.5 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/40 shrink-0 self-start sm:self-auto" title="Quest harian di-refresh setiap pukul 07:00 Pagi WIB">
+            RESET 07:00 WIB
+          </span>
+        </div>
 
         {quests.map((quest) => {
           const isDone = quest.completed || quest.current >= quest.target;

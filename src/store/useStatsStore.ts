@@ -1,7 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { DayFocusStat, IdentityStat, SessionRecord } from "../types/stats";
-import { getTodayDateString } from "../utils/formatters";
+import {
+  getEffectiveDateString,
+  getTodayDateString,
+  getYesterdayDateString,
+} from "../utils/formatters";
 
 interface StatsState {
   sessions: SessionRecord[];
@@ -31,21 +35,21 @@ export const useStatsStore = create<StatsState>()(
       sessions: [],
       currentStreak: 2,
       longestStreak: 5,
-      lastActiveDate: new Date(Date.now() - 86400000)
-        .toISOString()
-        .split("T")[0],
+      lastActiveDate: getYesterdayDateString(),
 
       recordSession: (sessionData) => {
+        const now = Date.now();
+        const todayStr = getTodayDateString(now);
+
         if (!sessionData.durationMinutes || sessionData.durationMinutes <= 0) {
           return {
             ...sessionData,
             id: 'sess-skipped',
-            timestamp: Date.now(),
-            dateStr: getTodayDateString(),
+            timestamp: now,
+            dateStr: todayStr,
           };
         }
 
-        const now = Date.now();
         const existingSessions = get().sessions;
         const lastSession = existingSessions[0];
 
@@ -61,7 +65,6 @@ export const useStatsStore = create<StatsState>()(
           return lastSession;
         }
 
-        const todayStr = getTodayDateString();
         const newRecord: SessionRecord = {
           ...sessionData,
           id: "sess-" + now + "-" + Math.random().toString(36).slice(2, 6),
@@ -74,9 +77,7 @@ export const useStatsStore = create<StatsState>()(
         let longest = get().longestStreak;
 
         if (lastDate !== todayStr) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split("T")[0];
+          const yesterdayStr = getYesterdayDateString(now);
 
           if (lastDate === yesterdayStr) {
             nextStreak += 1;
@@ -165,15 +166,19 @@ export const useStatsStore = create<StatsState>()(
       getTodayMinutes: () => {
         const todayStr = getTodayDateString();
         return get()
-          .sessions.filter((s) => s.dateStr === todayStr && s.mode === "focus")
+          .sessions.filter((s) => {
+            const dStr = s.timestamp ? getEffectiveDateString(s.timestamp) : s.dateStr;
+            return dStr === todayStr && s.mode === "focus";
+          })
           .reduce((acc, curr) => acc + curr.durationMinutes, 0);
       },
 
       getTodaySessionsCount: () => {
         const todayStr = getTodayDateString();
-        return get().sessions.filter(
-          (s) => s.dateStr === todayStr && s.mode === "focus",
-        ).length;
+        return get().sessions.filter((s) => {
+          const dStr = s.timestamp ? getEffectiveDateString(s.timestamp) : s.dateStr;
+          return dStr === todayStr && s.mode === "focus";
+        }).length;
       },
 
       getTotalMinutes: () => {
@@ -186,22 +191,22 @@ export const useStatsStore = create<StatsState>()(
         const sessions = get().sessions.filter((s) => s.mode === "focus");
         const dayMap: Record<string, { minutes: number; sessions: number }> = {};
 
-        // Prepare past N days
-        const result: DayFocusStat[] = [];
+        // Prepare past N days ending with today's effective work date
+        const now = Date.now();
         for (let i = daysCount - 1; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dStr = d.toISOString().split("T")[0];
+          const dStr = getEffectiveDateString(now, i);
           dayMap[dStr] = { minutes: 0, sessions: 0 };
         }
 
         sessions.forEach((s) => {
-          if (dayMap[s.dateStr]) {
-            dayMap[s.dateStr].minutes += s.durationMinutes;
-            dayMap[s.dateStr].sessions += 1;
+          const dStr = s.timestamp ? getEffectiveDateString(s.timestamp) : s.dateStr;
+          if (dayMap[dStr]) {
+            dayMap[dStr].minutes += s.durationMinutes;
+            dayMap[dStr].sessions += 1;
           }
         });
 
+        const result: DayFocusStat[] = [];
         Object.keys(dayMap)
           .sort()
           .forEach((date) => {
@@ -278,6 +283,11 @@ export const useStatsStore = create<StatsState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         state.cleanupDuplicateSessions();
+        // Normalize historical sessions to ensure past midnight sessions are mapped to 7:00 AM day cycle
+        state.sessions = state.sessions.map((s) => ({
+          ...s,
+          dateStr: s.timestamp ? getEffectiveDateString(s.timestamp) : s.dateStr,
+        }));
       },
     },
   ),

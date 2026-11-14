@@ -153,17 +153,26 @@ export function App() {
   useEffect(() => {
     // Check rollover on mount
     useGoalStore.getState().checkAndRolloverDailyGoals();
+    useGamifyStore.getState().checkAndRolloverDailyQuests();
+
+    // Check every 30s so passing 07:00 AM WIB while tab is open automatically rolls over
+    const rolloverInterval = setInterval(() => {
+      useGoalStore.getState().checkAndRolloverDailyGoals();
+      useGamifyStore.getState().checkAndRolloverDailyQuests();
+    }, 30000);
 
     const handleWakeUp = () => {
       if (document.visibilityState === 'visible') {
         tick();
         useGoalStore.getState().checkAndRolloverDailyGoals();
+        useGamifyStore.getState().checkAndRolloverDailyQuests();
       }
     };
 
     document.addEventListener('visibilitychange', handleWakeUp);
     window.addEventListener('focus', handleWakeUp);
     return () => {
+      clearInterval(rolloverInterval);
       document.removeEventListener('visibilitychange', handleWakeUp);
       window.removeEventListener('focus', handleWakeUp);
     };

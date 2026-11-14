@@ -97,8 +97,11 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
             <h3 className="font-silkscreen text-xs sm:text-sm font-bold text-[#f0edf6] uppercase">
               Target Fokus Harian (Daily Quests)
             </h3>
-            <p className="text-[11px] text-[#9f97ba]">
-              Progres fokusmu hari ini langsung dihitung ke target identitas.
+            <p className="text-[11px] text-[#9f97ba] flex flex-wrap items-center gap-1.5 mt-0.5">
+              <span>Progres fokusmu hari ini langsung dihitung ke target identitas.</span>
+              <span className="text-[#00f0ff] font-pixel text-[9px] px-1.5 py-0.2 bg-[#00f0ff]/10 border border-[#00f0ff]/40" title="Target & statistik di-refresh setiap pukul 07:00 Pagi WIB. Sesi lewat tengah malam tetap dihitung ke hari yang sama!">
+                RESET 07:00 WIB
+              </span>
             </p>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { DEFAULT_BADGES, DEFAULT_SHOP_ITEMS, DEFAULT_QUESTS } from '../utils/def
 import { DEFAULT_BOSSES } from '../utils/bosses';
 import { calculateTargetXp, getTitleForLevel } from '../utils/levelCalculator';
 import { soundFx } from '../audio/synthAudio';
+import { getTodayDateString } from '../utils/formatters';
 import { useSettingsStore } from './useSettingsStore';
 
 export interface BossDefeatLoot {
@@ -28,11 +29,13 @@ interface GamifyState {
   activeBossIndex: number;
   recentLevelUp: boolean;
   recentBossDefeat: BossDefeatLoot | null;
+  lastQuestDate: string;
 
   addXpAndGold: (xpEarned: number, goldEarned: number) => { leveledUp: boolean; newLevel: number };
   takeDamage: (amount: number, reason?: string) => { damageDealt: number; newHp: number };
   claimQuest: (questId: string) => void;
   updateQuestsProgress: (sessionsToday: number, minutesToday: number, identityId: string) => void;
+  checkAndRolloverDailyQuests: () => void;
   unlockBadge: (badgeId: string) => void;
   buyShopItem: (itemId: string) => boolean;
   equipShopItem: (itemId: string) => void;
@@ -69,6 +72,7 @@ export const useGamifyStore = create<GamifyState>()(
       activeBossIndex: 0,
       recentLevelUp: false,
       recentBossDefeat: null,
+      lastQuestDate: getTodayDateString(),
 
       addXpAndGold: (xpEarned, goldEarned) => {
         let { level, currentXp, targetXp, gold, hp, mana, maxHp, maxMana, name } = get().hero;
@@ -393,11 +397,40 @@ export const useGamifyStore = create<GamifyState>()(
           },
         }));
       },
+
+      checkAndRolloverDailyQuests: () => {
+        const todayStr = getTodayDateString();
+        const { lastQuestDate } = get();
+
+        if (!lastQuestDate) {
+          set({ lastQuestDate: todayStr });
+          return;
+        }
+
+        // When day changes (at 07:00 AM WIB cutoff), refresh daily quests & restore full vitals
+        if (lastQuestDate !== todayStr) {
+          set((state) => ({
+            lastQuestDate: todayStr,
+            quests: DEFAULT_QUESTS.map((q) => ({
+              ...q,
+              current: 0,
+              completed: false,
+              claimed: false,
+            })),
+            hero: {
+              ...state.hero,
+              hp: state.hero.maxHp,
+              mana: state.hero.maxMana,
+            },
+          }));
+        }
+      },
     }),
     {
       name: 'pixel-pomodoro-gamify',
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        state.checkAndRolloverDailyQuests();
         const equippedTheme = state.shopItems?.find(
           (i) => i.category === 'theme' && i.equipped
         );
