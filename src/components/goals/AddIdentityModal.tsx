@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGoalStore } from '../../store/useGoalStore';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
+import type { Identity } from '../../types/goal';
 
 interface AddIdentityModalProps {
   isOpen: boolean;
   onClose: () => void;
+  identityToEdit?: Identity | null;
 }
 
-export const AddIdentityModal: React.FC<AddIdentityModalProps> = ({ isOpen, onClose }) => {
-  const { addIdentity } = useGoalStore();
+export const AddIdentityModal: React.FC<AddIdentityModalProps> = ({
+  isOpen,
+  onClose,
+  identityToEdit,
+}) => {
+  const { addIdentity, updateIdentity } = useGoalStore();
 
   const [form, setForm] = useState({
     name: '',
@@ -19,32 +25,60 @@ export const AddIdentityModal: React.FC<AddIdentityModalProps> = ({ isOpen, onCl
     icon: 'sparkles',
   });
 
+  useEffect(() => {
+    if (identityToEdit) {
+      setForm({
+        name: identityToEdit.name,
+        role: identityToEdit.role,
+        motto: identityToEdit.motto,
+        color: identityToEdit.color,
+        icon: identityToEdit.icon || 'sparkles',
+      });
+    } else {
+      setForm({
+        name: '',
+        role: '',
+        motto: '',
+        color: '#00f0ff',
+        icon: 'sparkles',
+      });
+    }
+  }, [identityToEdit, isOpen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
 
-    addIdentity({
-      name: form.name.trim(),
-      role: form.role.trim() || 'Focus Practitioner',
-      motto: form.motto.trim() || 'Saya berkomitmen untuk tumbuh setiap hari melalui fokus terarah.',
-      color: form.color,
-      icon: form.icon,
-    });
+    if (identityToEdit) {
+      updateIdentity(identityToEdit.id, {
+        name: form.name.trim(),
+        role: form.role.trim() || 'Focus Practitioner',
+        motto: form.motto.trim() || 'Saya berkomitmen untuk tumbuh setiap hari melalui fokus terarah.',
+        color: form.color,
+        icon: form.icon,
+      });
+    } else {
+      addIdentity({
+        name: form.name.trim(),
+        role: form.role.trim() || 'Focus Practitioner',
+        motto: form.motto.trim() || 'Saya berkomitmen untuk tumbuh setiap hari melalui fokus terarah.',
+        color: form.color,
+        icon: form.icon,
+      });
+    }
 
-    setForm({
-      name: '',
-      role: '',
-      motto: '',
-      color: '#00f0ff',
-      icon: 'sparkles',
-    });
     onClose();
   };
 
   const presetColors = ['#00f0ff', '#ff0055', '#ffd700', '#00ff66', '#b388ff', '#ff8800'];
 
   return (
-    <PixelModal isOpen={isOpen} onClose={onClose} title="✨ Tambah Identitas Diri Baru" maxWidth="sm">
+    <PixelModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={identityToEdit ? "✏️ Edit Identitas Diri" : "✨ Tambah Identitas Diri Baru"}
+      maxWidth="sm"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">
@@ -110,7 +144,7 @@ export const AddIdentityModal: React.FC<AddIdentityModalProps> = ({ isOpen, onCl
             Batal
           </PixelButton>
           <PixelButton type="submit" variant="primary" size="sm">
-            Simpan Identitas
+            {identityToEdit ? "Simpan Perubahan" : "Simpan Identitas"}
           </PixelButton>
         </div>
       </form>

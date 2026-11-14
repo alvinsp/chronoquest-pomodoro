@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGoalStore } from '../../store/useGoalStore';
-import type { GoalPeriod } from '../../types/goal';
+import { useTimerStore } from '../../store/useTimerStore';
+import type { Goal, GoalPeriod } from '../../types/goal';
 import { PixelModal } from '../ui/PixelModal';
 import { PixelButton } from '../ui/PixelButton';
 import { getTodayDateString } from '../../utils/formatters';
@@ -9,14 +10,17 @@ interface AddGoalModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultPeriod?: GoalPeriod;
+  goalToEdit?: Goal | null;
 }
 
 export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   isOpen,
   onClose,
   defaultPeriod = 'daily',
+  goalToEdit,
 }) => {
-  const { identities, addGoal } = useGoalStore();
+  const { identities, addGoal, updateGoal, activeGoalId } = useGoalStore();
+  const { setTaskTitle, setActiveIdentityId: setTimerIdentityId } = useTimerStore();
 
   const [form, setForm] = useState({
     title: '',
@@ -27,6 +31,28 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
     notes: '',
   });
 
+  useEffect(() => {
+    if (goalToEdit) {
+      setForm({
+        title: goalToEdit.title,
+        period: goalToEdit.period,
+        identityId: goalToEdit.identityId || (identities[0]?.id ?? ''),
+        targetMinutes: goalToEdit.targetMinutes || 60,
+        targetSessions: goalToEdit.targetSessions || 2,
+        notes: goalToEdit.notes || '',
+      });
+    } else {
+      setForm({
+        title: '',
+        period: defaultPeriod,
+        identityId: identities[0]?.id || '',
+        targetMinutes: 60,
+        targetSessions: 2,
+        notes: '',
+      });
+    }
+  }, [goalToEdit, isOpen, defaultPeriod, identities]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
@@ -36,31 +62,50 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
     const currentMonth = new Date().getMonth() + 1;
     const isDaily = form.period === 'daily';
 
-    addGoal({
-      title: form.title.trim(),
-      period: form.period,
-      identityId: form.identityId || (identities[0]?.id ?? 'default'),
-      targetMinutes: isDaily ? form.targetMinutes : 0,
-      targetSessions: isDaily ? form.targetSessions : 0,
-      date: isDaily ? todayStr : undefined,
-      month: form.period === 'monthly' ? currentMonth : undefined,
-      year: form.period === 'annually' || form.period === 'monthly' ? currentYear : undefined,
-      notes: form.notes.trim() || undefined,
-    });
+    if (goalToEdit) {
+      updateGoal(goalToEdit.id, {
+        title: form.title.trim(),
+        period: form.period,
+        identityId: form.identityId || (identities[0]?.id ?? 'default'),
+        targetMinutes: isDaily ? form.targetMinutes : 0,
+        targetSessions: isDaily ? form.targetSessions : 0,
+        date: isDaily ? (goalToEdit.date || todayStr) : undefined,
+        month: form.period === 'monthly' ? (goalToEdit.month || currentMonth) : undefined,
+        year: form.period === 'annually' || form.period === 'monthly' ? (goalToEdit.year || currentYear) : undefined,
+        notes: form.notes.trim() || undefined,
+      });
 
-    setForm({
-      title: '',
-      period: defaultPeriod,
-      identityId: identities[0]?.id || '',
-      targetMinutes: 60,
-      targetSessions: 2,
-      notes: '',
-    });
+      // Keep active timer in sync if editing the currently active goal
+      if (activeGoalId === goalToEdit.id) {
+        setTaskTitle(form.title.trim());
+        if (form.identityId) {
+          setTimerIdentityId(form.identityId);
+        }
+      }
+    } else {
+      addGoal({
+        title: form.title.trim(),
+        period: form.period,
+        identityId: form.identityId || (identities[0]?.id ?? 'default'),
+        targetMinutes: isDaily ? form.targetMinutes : 0,
+        targetSessions: isDaily ? form.targetSessions : 0,
+        date: isDaily ? todayStr : undefined,
+        month: form.period === 'monthly' ? currentMonth : undefined,
+        year: form.period === 'annually' || form.period === 'monthly' ? currentYear : undefined,
+        notes: form.notes.trim() || undefined,
+      });
+    }
+
     onClose();
   };
 
   return (
-    <PixelModal isOpen={isOpen} onClose={onClose} title="🎯 Tambah Target Baru (Goal)" maxWidth="sm">
+    <PixelModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={goalToEdit ? "✏️ Edit Target (Goal)" : "🎯 Tambah Target Baru (Goal)"}
+      maxWidth="sm"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-silkscreen text-[#9f97ba] mb-1">
@@ -177,7 +222,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
             Batal
           </PixelButton>
           <PixelButton type="submit" variant="primary" size="sm">
-            Buat Goal
+            {goalToEdit ? "Simpan Perubahan" : "Buat Goal"}
           </PixelButton>
         </div>
       </form>

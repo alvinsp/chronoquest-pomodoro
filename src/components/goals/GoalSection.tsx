@@ -6,6 +6,7 @@ import {
     Target,
     Trash2,
     Zap,
+    Pencil,
 } from "lucide-react";
 import React, { useState } from "react";
 import { useGoalStore } from "../../store/useGoalStore";
@@ -29,6 +30,7 @@ export const GoalSection: React.FC = () => {
     useTimerStore();
   const [selectedPeriod, setSelectedPeriod] = useState<GoalPeriod>("daily");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
   const filteredGoals = goals.filter((g) => g.period === selectedPeriod);
 
@@ -67,7 +69,10 @@ export const GoalSection: React.FC = () => {
         <PixelButton
           variant="primary"
           size="sm"
-          onClick={() => setIsAddOpen(true)}
+          onClick={() => {
+            setEditingGoal(null);
+            setIsAddOpen(true);
+          }}
         >
           <Plus size={14} />
           <span>Tambah Target</span>
@@ -158,6 +163,15 @@ export const GoalSection: React.FC = () => {
 
                     <div className="flex items-center gap-1 shrink-0">
                       <button
+                        type="button"
+                        onClick={() => setEditingGoal(goal)}
+                        className="p-1 bg-[#0f0d1a] text-[#71688d] hover:text-[#00f0ff] border border-[#3b335c] hover:border-[#00f0ff] cursor-pointer transition-colors"
+                        title="Edit target ini"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => toggleGoalComplete(goal.id)}
                         className={`p-1 border cursor-pointer transition-all ${
                           isCompleted
@@ -173,6 +187,7 @@ export const GoalSection: React.FC = () => {
                         <CheckCircle size={15} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => deleteGoal(goal.id)}
                         className="p-1 text-[#6c638a] hover:text-[#ff3b30] cursor-pointer"
                         title="Hapus goal"
@@ -292,9 +307,13 @@ export const GoalSection: React.FC = () => {
       )}
 
       <AddGoalModal
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        isOpen={isAddOpen || Boolean(editingGoal)}
+        onClose={() => {
+          setIsAddOpen(false);
+          setEditingGoal(null);
+        }}
         defaultPeriod={selectedPeriod}
+        goalToEdit={editingGoal}
       />
     </div>
   );

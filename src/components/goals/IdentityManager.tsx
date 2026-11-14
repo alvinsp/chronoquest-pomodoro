@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Sparkles, Plus, Trash2, Quote, CheckCircle } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Quote, CheckCircle, Pencil } from 'lucide-react';
 import { useGoalStore } from '../../store/useGoalStore';
 import { PixelButton } from '../ui/PixelButton';
 import { AddIdentityModal } from './AddIdentityModal';
+import type { Identity } from '../../types/goal';
 
 export const IdentityManager: React.FC = () => {
   const { identities, activeIdentityId, setActiveIdentityId, deleteIdentity } = useGoalStore();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingIdentity, setEditingIdentity] = useState<Identity | null>(null);
 
   return (
     <div className="space-y-4">
@@ -21,7 +23,14 @@ export const IdentityManager: React.FC = () => {
           </p>
         </div>
 
-        <PixelButton variant="primary" size="sm" onClick={() => setIsAddOpen(true)}>
+        <PixelButton
+          variant="primary"
+          size="sm"
+          onClick={() => {
+            setEditingIdentity(null);
+            setIsAddOpen(true);
+          }}
+        >
           <Plus size={14} />
           <span>Tambah Identitas</span>
         </PixelButton>
@@ -50,15 +59,26 @@ export const IdentityManager: React.FC = () => {
                     <h4 className="font-silkscreen text-xs font-bold text-[#f0edf6]">{id.name}</h4>
                   </div>
 
-                  {identities.length > 1 && (
+                  <div className="flex items-center gap-1">
                     <button
-                      onClick={() => deleteIdentity(id.id)}
-                      className="text-[#6d648b] hover:text-[#ff3b30] p-1 cursor-pointer transition-colors"
-                      title="Hapus identitas"
+                      type="button"
+                      onClick={() => setEditingIdentity(id)}
+                      className="text-[#6d648b] hover:text-[#00f0ff] p-1 cursor-pointer transition-colors"
+                      title="Edit identitas ini"
                     >
-                      <Trash2 size={13} />
+                      <Pencil size={13} />
                     </button>
-                  )}
+                    {identities.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => deleteIdentity(id.id)}
+                        className="text-[#6d648b] hover:text-[#ff3b30] p-1 cursor-pointer transition-colors"
+                        title="Hapus identitas"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="text-[11px] font-pixel text-[#00f0ff] mb-2">{id.role}</div>
@@ -90,7 +110,14 @@ export const IdentityManager: React.FC = () => {
         })}
       </div>
 
-      <AddIdentityModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      <AddIdentityModal
+        isOpen={isAddOpen || Boolean(editingIdentity)}
+        identityToEdit={editingIdentity}
+        onClose={() => {
+          setIsAddOpen(false);
+          setEditingIdentity(null);
+        }}
+      />
     </div>
   );
 };

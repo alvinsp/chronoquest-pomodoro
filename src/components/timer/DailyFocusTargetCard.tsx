@@ -13,12 +13,14 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { useGoalStore } from '../../store/useGoalStore';
 import { useStatsStore } from '../../store/useStatsStore';
 import { useTimerStore } from '../../store/useTimerStore';
 import { PixelProgress } from '../ui/PixelProgress';
 import { formatMinutes } from '../../utils/formatters';
+import { AddGoalModal } from '../goals/AddGoalModal';
 import type { Goal } from '../../types/goal';
 
 interface DailyFocusTargetCardProps {
@@ -44,6 +46,7 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
 
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [subtaskInputMap, setSubtaskInputMap] = useState<Record<string, string>>({});
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
   const handleResetDailyConfirm = () => {
     if (window.confirm('Reset seluruh jam & progres Target Harian hari ini kembali ke 0?')) {
@@ -296,6 +299,16 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
                       {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                     </button>
 
+                    {/* Quick Edit Goal Button */}
+                    <button
+                      type="button"
+                      onClick={() => setEditingGoal(g)}
+                      className="p-1 bg-[#1c1830] hover:bg-[#25203d] text-[#8e85aa] hover:text-[#00f0ff] border border-[#3b335c] hover:border-[#00f0ff] text-[10px] font-silkscreen cursor-pointer transition-all"
+                      title={`Edit target "${g.title}"`}
+                    >
+                      <Pencil size={11} />
+                    </button>
+
                     {/* Reset Single Goal Button */}
                     {(g.currentMinutes > 0 || g.currentSessions > 0 || isCompleted) && (
                       <button
@@ -399,6 +412,13 @@ export const DailyFocusTargetCard: React.FC<DailyFocusTargetCardProps> = ({ onOp
           })}
         </div>
       )}
+
+      <AddGoalModal
+        isOpen={Boolean(editingGoal)}
+        onClose={() => setEditingGoal(null)}
+        defaultPeriod="daily"
+        goalToEdit={editingGoal}
+      />
     </div>
   );
 };

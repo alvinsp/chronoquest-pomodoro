@@ -134,9 +134,21 @@ export const useGoalStore = create<GoalState>()(
       updateGoal: (id, updates) => {
         soundFx.playClick();
         set((state) => ({
-          goals: state.goals.map((g) =>
-            g.id === id ? { ...g, ...updates } : g,
-          ),
+          goals: state.goals.map((g) => {
+            if (g.id !== id) return g;
+            const updated = { ...g, ...updates };
+            // If targetMinutes is increased beyond currentMinutes and completed was not explicitly set, un-complete
+            if (
+              updates.targetMinutes !== undefined &&
+              updates.completed === undefined &&
+              updated.period === "daily" &&
+              updated.targetMinutes > 0 &&
+              updated.currentMinutes < updated.targetMinutes
+            ) {
+              updated.completed = false;
+            }
+            return updated;
+          }),
         }));
       },
 
