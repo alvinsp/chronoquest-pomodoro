@@ -107,7 +107,7 @@ export const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({ isOpen
           <div className="flex flex-col items-center shrink-0">
             <div className="flex items-end gap-2">
               <PixelAvatar avatarId={selectedAvatarId} size="lg" />
-              <PixelPet petId={selectedPetId} />
+              <PixelPet petId={selectedPetId} size="md" />
             </div>
             <span className="text-[10px] font-pixel text-[#00f0ff] mt-2">PREVIEW TEAM</span>
           </div>

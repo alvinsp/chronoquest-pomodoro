@@ -216,6 +216,37 @@ class SynthAudio {
     osc.start(startTime);
     osc.stop(startTime + 0.35);
   }
+
+  /** Adorable Kawaii Pet Purr / Chirp Sound */
+  public playPetChirp() {
+    if (this.isMuted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const notes = [880, 1174.66, 1760]; // A5, D6, A6 (Cute high chirp)
+      notes.forEach((freq, idx) => {
+        const startTime = ctx.currentTime + idx * 0.045;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.08, startTime + 0.07);
+
+        gain.gain.setValueAtTime(this.volume * 0.18, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.09);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.09);
+      });
+    } catch {
+      // Audio context fallback
+    }
+  }
 }
 
 export const soundFx = new SynthAudio();
