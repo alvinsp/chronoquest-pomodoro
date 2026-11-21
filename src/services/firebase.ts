@@ -29,6 +29,7 @@ export interface CloudUserData {
     stats: string | null;
     notes: string | null;
     timer: string | null;
+    planner?: string | null;
   };
 }
 
@@ -224,6 +225,7 @@ export async function pushLocalDataToFirestore(userEmail: string): Promise<boole
         stats: localStorage.getItem('pixel-pomodoro-stats') || null,
         notes: localStorage.getItem('pixel-pomodoro-notes') || null,
         timer: localStorage.getItem('pixel-pomodoro-timer') || null,
+        planner: localStorage.getItem('pixel-pomodoro-planner') || null,
       },
     };
 
@@ -272,6 +274,7 @@ export function applyCloudDataToLocalStorage(cloudData: CloudUserData): boolean 
     if (data.stats) localStorage.setItem('pixel-pomodoro-stats', data.stats);
     if (data.notes) localStorage.setItem('pixel-pomodoro-notes', data.notes);
     if (data.timer) localStorage.setItem('pixel-pomodoro-timer', data.timer);
+    if (data.planner) localStorage.setItem('pixel-pomodoro-planner', data.planner);
 
     const updateTs = cloudData.lastUpdated || Date.now();
     localStorage.setItem('chronoquest_last_cloud_sync', new Date(updateTs).toISOString());

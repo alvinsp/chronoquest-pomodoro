@@ -4,6 +4,7 @@ import { useStatsStore } from './useStatsStore';
 import { useNotesStore } from './useNotesStore';
 import { useTimerStore } from './useTimerStore';
 import { useAuthStore } from './useAuthStore';
+import { usePlannerStore } from './usePlannerStore';
 
 let isRehydrating = false;
 
@@ -23,6 +24,7 @@ export async function rehydrateAllStores(): Promise<void> {
       useNotesStore.persist?.rehydrate(),
       useTimerStore.persist?.rehydrate(),
       useAuthStore.persist?.rehydrate(),
+      usePlannerStore.persist?.rehydrate(),
     ]);
   } catch (err) {
     console.warn('Store rehydration error:', err);

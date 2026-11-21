@@ -12,6 +12,7 @@ export interface SyncPayload {
     notes: string | null;
     timer: string | null;
     auth: string | null;
+    planner?: string | null;
     firebase?: string | null;
   };
 }
@@ -74,6 +75,10 @@ export async function createSyncPayloadString(
       timer:
         typeof localStorage !== "undefined"
           ? localStorage.getItem("pixel-pomodoro-timer")
+          : null,
+      planner:
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem("pixel-pomodoro-planner")
           : null,
       auth:
         typeof localStorage !== "undefined"
@@ -151,6 +156,7 @@ export function applySyncPayloadToLocalStorage(payload: SyncPayload): boolean {
     if (data.stats) localStorage.setItem("pixel-pomodoro-stats", data.stats);
     if (data.notes) localStorage.setItem("pixel-pomodoro-notes", data.notes);
     if (data.timer) localStorage.setItem("pixel-pomodoro-timer", data.timer);
+    if (data.planner) localStorage.setItem("pixel-pomodoro-planner", data.planner);
     if (data.auth) localStorage.setItem("pixel-pomodoro-auth", data.auth);
     if (data.firebase) localStorage.setItem("chronoquest_firebase_config", data.firebase);
 

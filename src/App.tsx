@@ -24,6 +24,8 @@ import { IdentityManager } from './components/goals/IdentityManager';
 import { GoalSection } from './components/goals/GoalSection';
 import { AddGoalModal } from './components/goals/AddGoalModal';
 
+import { PlannerSection } from './components/planner/PlannerSection';
+
 import { StatsOverview } from './components/stats/StatsOverview';
 import { HeatmapGrid } from './components/stats/HeatmapGrid';
 import { ProductivityHourChart } from './components/stats/ProductivityHourChart';
@@ -317,7 +319,12 @@ export function App() {
           </div>
         )}
 
-        {/* Tab 3: STATISTICS & HEATMAP */}
+        {/* Tab 3: PLANNING & CALENDAR */}
+        {activeTab === 'planner' && (
+          <PlannerSection onLaunchTimer={() => setActiveTab('timer')} />
+        )}
+
+        {/* Tab 4: STATISTICS & HEATMAP */}
         {activeTab === 'stats' && (
           <div className="space-y-6">
             <StatsOverview />

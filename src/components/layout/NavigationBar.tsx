@@ -1,8 +1,8 @@
 import React from 'react';
-import { Timer, Target, BarChart2 } from 'lucide-react';
+import { Timer, Target, Calendar, BarChart2 } from 'lucide-react';
 import { soundFx } from '../../audio/synthAudio';
 
-export type MainTabType = 'timer' | 'goals' | 'stats';
+export type MainTabType = 'timer' | 'goals' | 'planner' | 'stats';
 
 interface NavigationBarProps {
   activeTab: MainTabType;
@@ -16,6 +16,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const tabs = [
     { id: 'timer' as const, label: 'Fokus Timer', icon: <Timer size={16} /> },
     { id: 'goals' as const, label: 'Identitas & Goal', icon: <Target size={16} /> },
+    { id: 'planner' as const, label: 'Jadwal & Kalender', icon: <Calendar size={16} /> },
     { id: 'stats' as const, label: 'Statistik & Map', icon: <BarChart2 size={16} /> },
   ];
 
